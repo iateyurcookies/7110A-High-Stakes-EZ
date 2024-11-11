@@ -1,6 +1,7 @@
 #pragma once
 
 #include "api.h"
+#include "pros/rotation.hpp"
 
 // Your motors, sensors, etc. should go here.  Below are examples
 //Drive Motors, all 600 rpm blue carts
@@ -20,11 +21,17 @@ inline::pros::MotorGroup Arm({7, -8},     // Arm motors on ports 7 & 8
 pros::MotorGearset::green);      // both motors are green(5.5W is volted down)
 
 //Intake Motor, 600 rpm blue cart
-inline::pros::Motor Intake(20, pros::MotorGearset::green);
+inline::pros::Motor Intake(20, pros::MotorGearset::blue);
 
 //Clamp & Doinker Piston, Clamp : port H | Arm : port G
-pros::adi::DigitalOut clamp_piston(8);
-pros::adi::DigitalOut doinker_piston(7);
+inline::pros::adi::DigitalOut clamp_piston(8);
+inline::pros::adi::DigitalOut doinker_piston(7);
+
+// create an optical sensor on port 16
+inline::pros::Optical optical(10);
+
+inline::pros::Rotation ArmSensor(9);
+inline::pros::Rotation IntakeSensor(19);
 
 // inline inline::pros::Motor intake(1);
 // inline pros::adi::DigitalIn limit_switch('A');

@@ -1,4 +1,5 @@
 #include "autons.hpp"
+#include "EZ-Template/slew.hpp"
 #include "main.h"
 #include "pros/rtos.hpp"
 #include "subsystems.hpp"
@@ -226,11 +227,11 @@ void interfered_example() {
 // . . .
 void BlueRightAWP(){
   //score on alliance stake
-  chassis.pid_drive_set(-12_in, DRIVE_SPEED, true);
+  chassis.pid_drive_set(-17_in, 50, true);
   chassis.pid_wait();
-  chassis.pid_turn_set(90, TURN_SPEED);
+  chassis.pid_turn_set(-90, 75);
   chassis.pid_wait();
-  chassis.pid_drive_set(-2_in, DRIVE_SPEED, true);
+  chassis.pid_drive_set(-1.75_in, 40, false);
   chassis.pid_wait();
   Intake.move_velocity(600);
   pros::delay(600);
@@ -239,34 +240,112 @@ void BlueRightAWP(){
   Intake.move_velocity(0);
 
   //move forward, turn, and go to the mogo
-
-  //clamp mogo and turn to 4 pile
-
-  //move to 4 pile and intake 2 alliance rings
-
+  chassis.pid_drive_set(2_in, DRIVE_SPEED, false);
+  chassis.pid_wait();
+  chassis.pid_turn_set(130, 80);
+  chassis.pid_wait();
+  
+  //clamp mogo 
+  chassis.pid_drive_set(-36_in, 80, true);
+  chassis.pid_wait_until(-35.5_in);
+  clamp_piston.set_value(true);
+  chassis.pid_wait_quick_chain();
+  
   //turn to 2 stack
+  chassis.pid_turn_set(0, 80);
+  chassis.pid_wait();
 
   //go to 2 stack and intake
+  Intake.move_velocity(600);
+  chassis.pid_drive_set(18.5_in, 90, true);
+  chassis.pid_wait();
+  chassis.pid_drive_set(-4.5_in, 25, false);
+  chassis.pid_wait();
+  pros::delay(500);
+
+  //move to 4 pile and intake 2 alliance rings  
+  chassis.pid_turn_set(275, 80);
+  chassis.pid_wait();
+  chassis.pid_drive_set(9_in, 90, true);
+  chassis.pid_wait_quick_chain();
+  chassis.pid_drive_set(-5_in, 25, false);
+  chassis.pid_wait();
+  pros::delay(800);
+  Intake.move_velocity(0);
+  chassis.pid_drive_set(-18_in, 100, true);
+  chassis.pid_wait();
 
   //turn to ladder and touch
+  Arm.move_velocity(200);
+  chassis.pid_turn_set(225, 80);
+  chassis.pid_wait();
+  clamp_piston.set_value(false);
+  pros::delay(400);
+  Arm.move_velocity(0);
+  chassis.pid_drive_set(28_in, 90, true);
+  chassis.pid_wait();
 
 }
 
 void RedLeftAWP(){
   //score on alliance stake
+  chassis.pid_drive_set(-17_in, 50, true);
+  chassis.pid_wait();
+  chassis.pid_turn_set(90, 75);
+  chassis.pid_wait();
+  chassis.pid_drive_set(-1.75_in, 40, false);
+  chassis.pid_wait();
+  Intake.move_velocity(600);
+  pros::delay(600);
+  Intake.move_velocity(-600);
+  pros::delay(200);
+  Intake.move_velocity(0);
 
-  //move forward and go to the mogo
-
-  //clamp mogo and turn to 4 pile
-
-  //move to 4 pile and intake 2 alliance rings
-
+  //move forward, turn, and go to the mogo
+  chassis.pid_drive_set(2_in, DRIVE_SPEED, false);
+  chassis.pid_wait();
+  chassis.pid_turn_set(-130, 80);
+  chassis.pid_wait();
+  
+  //clamp mogo 
+  chassis.pid_drive_set(-37.2_in, 80, true);
+  chassis.pid_wait_until(-36.7_in);
+  clamp_piston.set_value(true);
+  chassis.pid_wait_quick_chain();
+  
   //turn to 2 stack
+  chassis.pid_turn_set(0, 80);
+  chassis.pid_wait();
 
-  //go to 2 stack and intake
+  // go to 2 stack and intake
+  Intake.move_velocity(600);
+  chassis.pid_drive_set(18.5_in, 80, true);
+  chassis.pid_wait();
+  chassis.pid_drive_set(-4.5_in, 25, false);
+  chassis.pid_wait();
+  pros::delay(500);
+
+  //move to 4 pile and intake 2 alliance rings  
+  chassis.pid_turn_set(-275, 80);
+  chassis.pid_wait();
+  chassis.pid_drive_set(9.5_in, 90, true);
+  chassis.pid_wait_quick_chain();
+  chassis.pid_drive_set(-5.5_in, 25, false);
+  chassis.pid_wait();
+  pros::delay(800);
+  Intake.move_velocity(0);
+  chassis.pid_drive_set(-18_in, 100, true);
+  chassis.pid_wait();
 
   //turn to ladder and touch
-  
+  Arm.move_velocity(200);
+  chassis.pid_turn_set(-225, 80);
+  chassis.pid_wait();
+  clamp_piston.set_value(false);
+  pros::delay(400);
+  Arm.move_velocity(0);
+  chassis.pid_drive_set(28_in, 90, true);
+  chassis.pid_wait();
 }
 
 void BlueRight6(){
