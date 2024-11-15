@@ -1,65 +1,26 @@
 #include "main.h"
+#include <cmath>
 #include <cstdlib>
+#include <future>
+#include <string>
+#include "EZ-Template/PID.hpp"
 #include "EZ-Template/auton.hpp"
+#include "EZ-Template/util.hpp"
 #include "autons.hpp"
 #include "pros/apix.h"
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
 #include "pros/motors.h"
+#include "pros/rtos.hpp"
 #include "subsystems.hpp"
 
-// Chassis constructor
-ez::Drive chassis(
-    // These are your drive motors, the first motor is used for sensing!
-    {-1, -2, -3},     // Left Chassis Ports (negative port will reverse it!)
-    {4, 5, 6},       // Right Chassis Ports (negative port will reverse it!)
-
-    19,                                   // IMU Port
-    3.25,                           // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
-    450);                                    // Wheel RPM
-
+                                  
 //Initialize important variables
 static int autonNum = 0;
 static bool clampPiston {false};
 static bool doinkPiston {false};
 static bool team {true};//----------------------> true = red    false = blue
-static bool armActive{false};
-
-
-void initialize() {
-  autonNum = 0;
-  pros::delay(500);  // Stop the user from doing anything while legacy ports configure
-  Arm.set_voltage_limit(5500);//---------------------> Set 5.5 watt motor limit
-  ArmSensor.reset();
-  // Configure your chassis controls
-  chassis.opcontrol_curve_buttons_toggle(true);  // Enables modifying the controller curve with buttons on the joysticks
-  chassis.opcontrol_drive_activebrake_set(0);    // Sets the active brake kP. We recommend ~2.  0 will disable.
-  chassis.opcontrol_curve_default_set(0, 0);     // Defaults for curve. If using tank, only the first parameter is used.
-
-  // Set the drive to your own constants from autons.cpp!
-  default_constants();
-
-  // These are already defaulted to these buttons, but you can change the left/right curve buttons here!
-  // chassis.opcontrol_curve_buttons_left_set(pros::E_CONTROLLER_DIGITAL_LEFT, pros::E_CONTROLLER_DIGITAL_RIGHT);// If using tank, only the left side is used.
-  // chassis.opcontrol_curve_buttons_right_set(pros::E_CONTROLLER_DIGITAL_Y, pros::E_CONTROLLER_DIGITAL_A);
-
-  // Autonomous Selector using LLEMU
-  ez::as::auton_selector.autons_add({
-      Auton("Example Drive\n\nDrive forward and come back.", RedLeftAWP),
-      Auton("Example Turn\n\nTurn 3 times.", turn_example),
-      Auton("Drive and Turn\n\nDrive forward, turn, come back. ", drive_and_turn),
-      Auton("Drive and Turn\n\nSlow down during drive.", wait_until_change_speed),
-      Auton("Swing Example\n\nSwing in an 'S' curve", swing_example),
-      Auton("Motion Chaining\n\nDrive forward, turn, and come back, but blend everything together :D", motion_chaining),
-      Auton("Combine all 3 movements", combining_movements),
-      Auton("Interference\n\nAfter driving forward, robot performs differently if interfered or not.", interfered_example),
-  });
-
-  // Initialize chassis and auton selector
-  chassis.initialize();
-  ez::as::initialize();
-  master.rumble(".");
-}
+static int armPos = 0;
 
 //Color sorting function for the intake
 void colorSort(bool teamCol){
@@ -85,6 +46,37 @@ void colorSort(bool teamCol){
   }
 }
 
+// Chassis constructor
+ez::Drive chassis(
+    // These are your drive motors, the first motor is used for sensing!
+    {-1, -2, -3},     // Left Chassis Ports (negative port will reverse it!)
+    {4, 5, 6},       // Right Chassis Ports (negative port will reverse it!)
+
+    19,                                   // IMU Port
+    3.25,                           // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
+    450                                      // Wheel RPM
+);  
+
+void initialize() {
+  autonNum = 0;
+  pros::delay(500);                        // Stop the user from doing anything while legacy ports configure
+  Arm.set_voltage_limit(5500);//-------------------> Set 5.5 watt motor limit
+  // ArmLeft.tare_position();
+  // armPID.exit_condition_set(80, 50, 100, 150, 400, 100);
+  ArmSensor.reset();
+  // Configure your chassis controls
+  chassis.opcontrol_curve_buttons_toggle(true);  // Enables modifying the controller curve with buttons on the joysticks
+  chassis.opcontrol_drive_activebrake_set(0);        // Sets the active brake kP. We recommend ~2.  0 will disable.
+  chassis.opcontrol_curve_default_set(0, 0);// Defaults for curve. If using tank, only the first parameter is used.
+
+  // Set the drive to your own constants from autons.cpp!
+  default_constants();
+
+  // Initialize chassis and auton selector
+  chassis.initialize();
+  master.rumble(".");
+}
+
 void disabled() {
   // . . .
 }
@@ -98,24 +90,30 @@ void autonomous() {
   chassis.drive_imu_reset();                              // Reset gyro position to 0
   chassis.drive_sensor_reset();                           // Reset drive sensors to 0
   chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold.  This helps autonomous consistency
-  // if(autonNum == 0){
-  //   BlueRightAWP();
-  // }else if (autonNum == 1) {
-  //   RedLeftAWP();
-  // }else if (autonNum == 2) {
-  //   test();
-  // }else if(autonNum == 3){
-  //   BlueRight6();
-  // }
-  ez::as::auton_selector.selected_auton_call();           // Calls selected auton from autonomous selector
+  if(autonNum == 0){
+    BlueRightAWP();
+  }else if (autonNum == 1) {
+    RedLeftAWP();
+  }else if (autonNum == 2) {
+    BlueLeftRush();
+  }else if(autonNum == 3){
+    RedRightRush();
+  }else if(autonNum == 4){
+    prog();
+  }
+  // ez::as::auton_selector.selected_auton_call();        // Calls selected auton from autonomous selector
 }
 
 void opcontrol() {
+  ArmSensor.reset();
+  ArmSensor.set_position(0);
   // This is preference to what you like to drive on
   pros::motor_brake_mode_e_t driver_preference_brake = MOTOR_BRAKE_COAST;
-
   chassis.drive_brake_set(driver_preference_brake);
+  Arm.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+
   chassis.pid_tuner_disable();
+  // armStates armState = armStates::down;
 
   pros::Task controller_screen([&]() {//------> Prints important shit to the controller screen
       while(true){
@@ -128,15 +126,18 @@ void opcontrol() {
         else if(autonNum == 1)
           autoStr = "RSWP ";
         else if (autonNum == 2) 
-          autoStr = "Test "; 
+          autoStr = "BRush"; 
         else if (autonNum == 3)
-          autoStr = "BRush";
+          autoStr = "RRush";
+        else if (autonNum == 4)
+          autoStr = "Prog ";
         if(team)
           teamStr = "R";
         else
           teamStr = "B";
         std::string controllerString = teamStr + " A: " + autoStr + "T: " + std::to_string(avrMotorTemp);
-        master.print(0, 1, "%s", controllerString);
+        // master.print(0, 1, "%s", controllerString);
+        master.print(0, 1, "%d", ArmSensor.get_position());
         pros::delay(100);
       }
     });
@@ -151,58 +152,57 @@ void opcontrol() {
     //   //  * use the arrow keys to navigate the constants
     //   if (master.get_digital_new_press(DIGITAL_DOWN))
     //     chassis.pid_tuner_toggle();
-
-    //   // Trigger the selected autonomous routine
-    //   if (master.get_digital(DIGITAL_X) && master.get_digital(DIGITAL_DOWN)) {
-    //     autonomous();
-    //     chassis.drive_brake_set(driver_preference_brake);
-    //   }
-
     //   chassis.pid_tuner_iterate();  // Allow PID Tuner to iterate
     // }
   
-    chassis.opcontrol_arcade_standard(ez::SPLIT);   // Standard split arcade
-
-    //--------------------------------------------------------------Setup-------------------------------------------------------------------
+//--------------------------------------------------------------Setup-------------------------------------------------------------------
+  
+  // Standard split arcade(left = forward-back right = turning)
+  chassis.opcontrol_arcade_standard(ez::SPLIT);   
   // Left button will cycle back though the autons and right button cycles forward
-  if(autonNum == 4  || autonNum == -1){
+  if(autonNum == 5  || autonNum == -1){
     autonNum = 0;
   }if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){
-    autonNum = autonNum + 1;
+    autonNum++;
   }if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)){
-    autonNum = autonNum - 1;
+    autonNum--;
   }
+
   // Pressing the up button will change the bots color sorting to the opposite color
   if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP)) {
     team = !team;
   }
+
 //--------------------------------------------------------------Pistons-----------------------------------------------------------------
+  
   //Pressing B will acuate the mobile goal clamp (is toggle)
   if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)){
     if (!clampPiston) {
         clamp_piston.set_value(true);
         clampPiston = !clampPiston;
-    }
-    else {
+    }else {
         clamp_piston.set_value(false);
         clampPiston = !clampPiston;
     }}
+
   //Pressing A will acuate THE DOINKER (is toggle)
   if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)){
     if (!doinkPiston) {
         doinker_piston.set_value(true);
         doinkPiston = !doinkPiston;
-    }
-    else {
+    }else {
         doinker_piston.set_value(false);
         doinkPiston = !doinkPiston;
     }}
-//----------------------------------------------------Auto, Intake, & Arm code----------------------------------------------------------
+
+//---------------------------------------------------Auton, Intake, & Arm code----------------------------------------------------------
+  
   //Pressing both X and Down on the controller will run the selected auton (for testing/development)
   if(master.get_digital(pros::E_CONTROLLER_DIGITAL_X) 
   && master.get_digital(pros::E_CONTROLLER_DIGITAL_UP)){
     autonomous();
   }
+
   //Pressing L1 will intake with colorsort and L2 will outake
   if (master.get_digital(pros::E_CONTROLLER_DIGITAL_L1) == true) {
     colorSort(team);
@@ -211,29 +211,79 @@ void opcontrol() {
   } else {
     Intake.move_velocity(0);
   }
+
   //Pressing R1 will move the Lady Brown mech up and R2 will move it down
   if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1) == true){
+    Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_COAST);
     Arm.move_velocity(200);
   }else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2) == true){
+    Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_COAST);
     Arm.move_velocity(-200);
   }else{
     Arm.move_velocity(0);
   }
 
+  if(ArmSensor.get_position() <= 0)
+    ArmSensor.set_position(0);
   if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)){
-    if (armActive) {
-      float target = 108;
+      int target = 17500;
       Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);
-      while (ArmSensor.get_angle() < target - 10) {
-        Arm.move_velocity(target - (target * (ArmSensor.get_angle() / target)) + 100);
+      if(ArmSensor.get_position() <= target){
+        while(ArmSensor.get_position() <= target - 300) {
+          Arm.move_velocity(100 + (11 * (ArmSensor.get_position()/10000)));
+        }
+      }else if(ArmSensor.get_position() >= target){
+        while(ArmSensor.get_position() >= target) {
+          Arm.move_velocity(-100 + (11 * (ArmSensor.get_position()/10000)));
+        }
+      Arm.move_velocity(0);}
       }
-      Arm.move_velocity(0);
-      armActive = !armActive;
-    }
-    else {
-      armActive = !armActive;
-    }}
 
-    pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
+// // Lady Brown make sure to define armPos somewhere silly Needs to be zero- bot is fucked if the dunk mech starts at a weird spot 
+//    if(master.get_digital_new_press(DIGITAL_Y))
+//    {
+//      if(armPos == 0){ // lady brown is down and needs a revive to score that ring dub
+//        Arm.move_velocity(0); // probs not needed but works?
+//        ArmSensor.reset_position(); // its down so reset it pookie
+//        Arm.move(-100); // flip
+//        armPos = 1;
+//      }else if(armPos == 2) //go from ring grab to being high af
+//       { 
+//       Arm.move_velocity(0); // probs not needed but works?
+//         ArmSensor.reset_position(); // its down so reset it pookie
+//         Arm.move(-100); // flip
+//         armPos = 3;
+//       }else if(armPos == 4) //return to home position
+//       { 
+//       Arm.move_velocity(0); // probs not needed but works?
+//         ArmSensor.reset_position(); // its down so reset it pookie
+//         Arm.move(100); // flip
+//         armPos = 5;
+//       }
+      
+
+//     }
+//     int grabRingPos = 35;
+//     int scoreRingPos = 150;
+//     int returnHomePos = 6; // falls back to zero as motor braking is turned off- zero is recalibrated as well - bot bouncing may hurt this dunno it funny
+//     if(armPos == 1 && ArmSensor.get_position() >= 1000*grabRingPos){
+//       Arm.move(0);
+//       armPos = 2;
+//       Arm.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD); 
+//       Arm.move_velocity(0);
+//     }else if(armPos == 3 && ArmSensor.get_position() >= 1000*scoreRingPos){
+//       Arm.move(0);
+//       armPos = 4;
+//       Arm.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD); 
+//       Arm.move_velocity(0);
+//     }else if(armPos == 5 && ArmSensor.get_position() <= 1000*returnHomePos){
+//       Arm.move(0);
+//       armPos = 0;
+//       Arm.set_brake_mode(pros::E_MOTOR_BRAKE_COAST); 
+//       Arm.move_velocity(0); //resets pos to zero cuz it home now :)
+//     }
+  
+  pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
+  
   }
 }

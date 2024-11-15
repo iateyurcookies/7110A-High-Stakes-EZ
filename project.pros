@@ -421,7 +421,8 @@
       }
     },
     "upload_options": {
-      "description": "EZTEMP"
+      "description": "BlueRightAWP",
+      "icon": "pizza"
     },
     "use_early_access": false
   }

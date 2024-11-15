@@ -30,7 +30,7 @@ inline::pros::adi::DigitalOut doinker_piston(7);
 // create an optical sensor on port 16
 inline::pros::Optical optical(10);
 
-inline::pros::Rotation ArmSensor(9);
+inline::pros::Rotation ArmSensor(-9);
 inline::pros::Rotation IntakeSensor(19);
 
 // inline inline::pros::Motor intake(1);

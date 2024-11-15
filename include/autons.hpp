@@ -14,7 +14,9 @@ void combining_movements();
 void interfered_example();
 void BlueRightAWP();
 void RedLeftAWP();
-void BlueRight6();
+void BlueLeftRush();
+void RedRightRush();
+void prog();
 void test();
 
 void default_constants();
