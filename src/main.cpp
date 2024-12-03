@@ -119,6 +119,19 @@ void autonomous() {
   }else if (autonNum == 7) {
     test();
   }
+
+  pros::Task ArmMacro([&]() {//---------------> Macro for arm
+    while(true){
+    // Resets the position of the arm sensor if it turns negative
+    if (ArmSensor.get_position() < 0)                                        
+      ArmSensor.set_position(0);
+    if (armMacro == true) {  // button Y activates the macro
+      int target = 12500;
+      int timeout = 0;
+      Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);  // sets braking to hold for better consistency
+      if (ArmSensor.get_position() <= target) {
+        Arm.move_velocity(200);
+      }}}});
   
 }
 
@@ -188,6 +201,7 @@ void opcontrol() {
         Arm.move_velocity(200);
       }
     }
+
     // Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);
     // moveArm(armPID.compute(ArmLeft.get_position()));
     // pros::delay(ez::util::DELAY_TIME);
@@ -274,6 +288,7 @@ void opcontrol() {
     Arm.move_velocity(0);
   }
 
+  // Pressing Y will move the macro to the scoring
   if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)){
     armMacro = !armMacro;
   }
