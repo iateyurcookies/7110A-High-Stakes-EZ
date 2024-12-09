@@ -47,36 +47,26 @@ void colorSort(bool teamCol){
 
 // Chassis constructor
 ez::Drive chassis(
-    {-1, -2, -3},     // Left Chassis Ports (negative port will reverse it!)
-    {4, 5, 6},       // Right Chassis Ports (negative port will reverse it!)
+    {-10, -9, -8},     // Left Chassis Ports (negative port will reverse it!)
+    {7, 6, 5},       // Right Chassis Ports (negative port will reverse it!)
 
-    18,                                   // IMU Port
+    1,                                    // IMU Port
     3.25,                           // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     450                                      // Wheel RPM
 );  
 
-ez::PID armPID{3, 0.05, 20, 15, "ArmMacro"};
-
-void moveArm(int input){
-  ArmLeft.move(input);
-  ArmRight.move(input);
-}
-
-void armWait(){
-  while (armPID.exit_condition({ArmLeft, ArmRight}, true) == ez::RUNNING){
-    pros::delay(ez::util::DELAY_TIME);
-  }
-}
+ez::PID armPID{2, 0.003, 20, 15, "ArmMacro"};
 
 void initialize() {
   autonNum = 0;
   pros::delay(500);//-----------------------> Stop the user from doing anything while legacy ports configure
-  Arm.set_voltage_limit_all(5500);//---------------> Set 5.5 watt motor limit for the half watt arm motors
+  Arm.set_voltage_limit(5500);//---------------> Set 5.5 watt motor limit for the half watt arm motors
   ArmSensor.reset();
+  armPID.exit_condition_set(100, 3, 500, 7, 500, 500);
 
   // Configure your chassis controls
   chassis.opcontrol_curve_buttons_toggle(true);  // Enables modifying the controller curve with buttons on the joysticks
-  chassis.opcontrol_drive_activebrake_set(0);        // Sets the active brake kP. We recommend ~2.  0 will disable.
+  chassis.opcontrol_drive_activebrake_set(0);        // Sets the active brake kP. 0 will disable.
   chassis.opcontrol_curve_default_set(0, 0);// Defaults for curve. If using tank, only the first parameter is used.
 
   // Set the drive to your own constants from autons.cpp!
@@ -99,7 +89,7 @@ void autonomous() {
   chassis.pid_targets_reset();                            // Resets PID targets to 0
   chassis.drive_imu_reset();                              // Reset gyro position to 0
   chassis.drive_sensor_reset();                           // Reset drive sensors to 0
-  chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold.  This helps autonomous consistency
+  chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold. This helps autonomous consistency
   
   //Auton selector, Runs selected auton based off auton variable
   if/*---*/(autonNum == 0){
@@ -125,7 +115,7 @@ void autonomous() {
     // Resets the position of the arm sensor if it turns negative
     if (ArmSensor.get_position() < 0)                                        
       ArmSensor.set_position(0);
-    if (armMacro == true) {  // button Y activates the macro
+    if (armMacro == true) {                                    // button Y activates the macro
       int target = 12500;
       int timeout = 0;
       Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);  // sets braking to hold for better consistency
@@ -194,7 +184,7 @@ void opcontrol() {
     if (ArmSensor.get_position() < 0)                                        
       ArmSensor.set_position(0);
     if (armMacro == true) {  // button Y activates the macro
-      int target = 12500;
+      int target = 2000;
       int timeout = 0;
       Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);  // sets braking to hold for better consistency
       if (ArmSensor.get_position() <= target) {
@@ -203,8 +193,14 @@ void opcontrol() {
     }
 
     // Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);
-    // moveArm(armPID.compute(ArmLeft.get_position()));
-    // pros::delay(ez::util::DELAY_TIME);
+    // armPID.target_set(1);
+    // if(armMacro == true)
+    // {
+    //   armPID.target_set(350);
+    //   if(armPID.)
+    //   Arm.move(armPID.compute(Arm.get_position()));
+    // }
+    
     }
     });
 
@@ -273,10 +269,13 @@ void opcontrol() {
   // Pressing L1 will intake with colorsort and L2 will outake
   if (master.get_digital(pros::E_CONTROLLER_DIGITAL_L1) == true) {
     Intake.move_velocity(600);
+    IntakeFlex.move_velocity(200);
   } else if (master.get_digital(pros::E_CONTROLLER_DIGITAL_L2) == true) {
     Intake.move_velocity(-600);
+    IntakeFlex.move_velocity(-200);
   } else {
     Intake.move_velocity(0);
+    IntakeFlex.move_velocity(0);
   }
 
   // Pressing R1 will move the Lady Brown mech up and R2 will move it down
