@@ -61,7 +61,9 @@ void initialize() {
   autonNum = 0;
   pros::delay(500);//-----------------------> Stop the user from doing anything while legacy ports configure
   Arm.set_voltage_limit(5500);//---------------> Set 5.5 watt motor limit for the half watt arm motors
+  IntakeFlex.set_voltage_limit(5500);
   ArmSensor.reset();
+  Arm.tare_position();
   armPID.exit_condition_set(100, 3, 500, 7, 500, 500);
 
   // Configure your chassis controls
@@ -90,7 +92,9 @@ void autonomous() {
   chassis.drive_imu_reset();                              // Reset gyro position to 0
   chassis.drive_sensor_reset();                           // Reset drive sensors to 0
   chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold. This helps autonomous consistency
-  
+  ArmSensor.reset();
+  ArmSensor.set_position(0);
+
   //Auton selector, Runs selected auton based off auton variable
   if/*---*/(autonNum == 0){
     sixRingBlue();
@@ -110,18 +114,7 @@ void autonomous() {
     test();
   }
 
-  pros::Task ArmMacro([&]() {//---------------> Macro for arm
-    while(true){
-    // Resets the position of the arm sensor if it turns negative
-    if (ArmSensor.get_position() < 0)                                        
-      ArmSensor.set_position(0);
-    if (armMacro == true) {                                    // button Y activates the macro
-      int target = 12500;
-      int timeout = 0;
-      Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);  // sets braking to hold for better consistency
-      if (ArmSensor.get_position() <= target) {
-        Arm.move_velocity(200);
-      }}}});
+  
   
 }
 
@@ -184,25 +177,13 @@ void opcontrol() {
     if (ArmSensor.get_position() < 0)                                        
       ArmSensor.set_position(0);
     if (armMacro == true) {  // button Y activates the macro
-      int target = 2000;
+      int target = 1500;
       int timeout = 0;
       Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);  // sets braking to hold for better consistency
       if (ArmSensor.get_position() <= target) {
         Arm.move_velocity(200);
       }
-    }
-
-    // Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);
-    // armPID.target_set(1);
-    // if(armMacro == true)
-    // {
-    //   armPID.target_set(350);
-    //   if(armPID.)
-    //   Arm.move(armPID.compute(Arm.get_position()));
-    // }
-    
-    }
-    });
+    }}});
 
   while (true) {
     // PID Tuner

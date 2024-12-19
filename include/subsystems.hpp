@@ -16,7 +16,7 @@ inline::pros::Motor Arm(-2, pros::MotorGearset::green);
 
 // Intake Motor, 600 rpm blue cart
 inline::pros::Motor Intake(4, pros::MotorGearset::blue);
-inline::pros::Motor IntakeFlex(-3, pros::MotorGearset::green);
+inline::pros::Motor IntakeFlex(3, pros::MotorGearset::green);
 
 // Clamp & Doinker Piston, Clamp : port A | Doinker : port B
 inline::pros::adi::DigitalOut clamp_piston(1);
