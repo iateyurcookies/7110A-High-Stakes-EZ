@@ -14,15 +14,14 @@
 #include "pros/motors.h"
 #include "pros/rtos.hpp"
 #include "subsystems.hpp"
-
-                                  
+                 
 //Initialize important variables
 static int autonNum = 0;//----------------------> auton selector integer
 static bool clampPiston {false};//--------------> toggle for mogo clamp
 static bool doinkPiston {false};//--------------> toggle for doinker
 static bool team {true};//----------------------> true = red    false = blue
 static bool armMacro {false};
-static double DunkPos = 0;
+static int DunkPos = 0;
 
 //Color sorting function for the intake
 void colorSort(bool teamCol){
@@ -57,16 +56,13 @@ ez::Drive chassis(
     450                                      // Wheel RPM
 );  
 
-ez::PID armPID{2, 0.003, 20, 15, "ArmMacro"};
-
 void initialize() {
   autonNum = 0;
   pros::delay(500);//-----------------------> Stop the user from doing anything while legacy ports configure
-  Arm.set_voltage_limit(5500);//---------------> Set 5.5 watt motor limit for the half watt arm motors
+  Arm.set_voltage_limit(5500);//-------------------> Set 5.5 watt motor limit for the half watt arm motor
   IntakeFlex.set_voltage_limit(5500);
   ArmSensor.reset();
   Arm.tare_position();
-  armPID.exit_condition_set(100, 3, 500, 7, 500, 500);
 
   // Configure your chassis controls
   chassis.opcontrol_curve_buttons_toggle(true);  // Enables modifying the controller curve with buttons on the joysticks
@@ -115,9 +111,6 @@ void autonomous() {
   }else if (autonNum == 7) {
     test();
   }
-
-  
-  
 }
 
 void opcontrol() {
@@ -173,33 +166,7 @@ void opcontrol() {
     }
   });
 
-  // pros::Task ArmMacro([&]() {//---------------> Macro for arm
-  //   while(true){
-  //   // Resets the position of the arm sensor if it turns negative
-  //   if (ArmSensor.get_position() < 0)                                        
-  //     ArmSensor.set_position(0);
-  //   if (armMacro == true) {  // button Y activates the macro
-  //     int target = 1500;
-  //     int timeout = 0;
-  //     Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);  // sets braking to hold for better consistency
-  //     if (ArmSensor.get_position() <= target) {
-  //       Arm.move_velocity(200);
-  //     }
-  //   }}});
-
-  while (true) {
-    // PID Tuner
-    // After you find values that you're happy with, you'll have to set them in auton.cpp
-    // if (!pros::competition::is_connected()) {
-    //   // Enable / Disable PID Tuner
-    //   //  When enabled:
-    //   //  * use A and Y to increment / decrement the constants
-    //   //  * use the arrow keys to navigate the constants
-    //   if (master.get_digital_new_press(DIGITAL_DOWN))
-    //     chassis.pid_tuner_toggle();
-    //   chassis.pid_tuner_iterate();  // Allow PID Tuner to iterate
-    // }
-  
+  while (true) {// Driver control while loop
 //--------------------------------------------------------------Setup-------------------------------------------------------------------
   
   // Standard split arcade(left stick = forward-back | right stick = turning)
@@ -214,8 +181,9 @@ void opcontrol() {
     autonNum--;
   }
 
-  // Pressing the up button will change the bots color sorting to the opposite color
-  if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP) && master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)) {
+  // Pressing the up and left buttons will change the bots color sorting to the opposite color for color-sorting
+  if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP) 
+  && master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)) {
     team = !team;
   }
 
@@ -224,81 +192,84 @@ void opcontrol() {
   // Pressing B will acuate the mobile goal clamp (is toggle)
   if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)) {
     if (!clampPiston) {
-        clamp_piston.set_value(true);
-        clampPiston = !clampPiston;
+      clamp_piston.set_value(true);
+      clampPiston = !clampPiston;
     }else {
-        clamp_piston.set_value(false);
-        clampPiston = !clampPiston;
+      clamp_piston.set_value(false);
+      clampPiston = !clampPiston;
     }}
 
-  // Pressing A will acuate THE DOINKER (is toggle)
+  // Pressing -> or Y will acuate THE DOINKER (is toggle)
   if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT) 
   || master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
     if (!doinkPiston) {
-        doinker_piston.set_value(true);
-        doinkPiston = !doinkPiston;
+      doinker_piston.set_value(true);
+      doinkPiston = !doinkPiston;
     } else {
-        doinker_piston.set_value(false);
-        doinkPiston = !doinkPiston;
+      doinker_piston.set_value(false);
+      doinkPiston = !doinkPiston;
     }}
 
-    // Lady Brown make sure to define DunkPos somewhere silly Needs to be zero- bot is fucked if the dunk mech starts at a weird spot 
-    if(master.get_digital_new_press(DIGITAL_DOWN))
-    {
-      if(DunkPos == 0){ // lady brown is down and needs a revive to score that ring dub
-        Arm.move_velocity(0); // probs not needed but works?
-        ArmSensor.reset_position(); // its down so reset it pookie
-        Arm.move_velocity(200); // flip
-        DunkPos = 1;
-      }
-      
-      else if(DunkPos == 2) //go from ring grab to being high af
-      { 
-        Arm.move_velocity(0); // probs not needed but works?
-        Arm.move_velocity(200); // flip
-        DunkPos = 3;
-      }
-      else if(DunkPos == 4) //return to home position
-      { 
-        Arm.move_velocity(0); // probs not needed but works?
-        Arm.move_velocity(200); // flip
-        DunkPos = 5;
-      }
-      else if(DunkPos == 6) //return to home position
-      { 
-        Arm.move_velocity(0);
-        Arm.move_velocity(-200); // flip
-        pros::delay(500);
-        Arm.set_brake_mode(pros::E_MOTOR_BRAKE_COAST); 
-        Arm.move_velocity(0);
-        DunkPos = 0;
-      }
+//-------------------------------------Lady Brown macro code (make sure it starts at the hardstop)--------------------------------------
+   
+  if(master.get_digital_new_press(DIGITAL_DOWN))
+  {
+    if(DunkPos == 0){//                 If it's at pos 0, go to pos 1 (ring grabbing)
+      Arm.move_velocity(0); 
+      ArmSensor.reset_position(); 
+      Arm.move_velocity(200); 
+      DunkPos = 1;
     }
+    else if(DunkPos == 2)//             Goes from ring grabbing (pos 1) to lining up (pos 3)
+    { 
+      Arm.move_velocity(0);
+      Arm.move_velocity(200);
+      DunkPos = 3;
+    }
+    else if(DunkPos == 4)//             Goes from lining up (pos 3) to scoring (pos 4)
+    { 
+      Arm.move_velocity(0);
+      Arm.move_velocity(200);
+      DunkPos = 5;
+    }
+    else if(DunkPos == 6)//             Goes to home position (pos 0)
+    { 
+      Arm.move_velocity(0);
+      Arm.move_velocity(-200);
+      pros::delay(500);
+      Arm.set_brake_mode(pros::E_MOTOR_BRAKE_COAST); 
+      Arm.move_velocity(0);
+      DunkPos = 0;
+    }
+  }
 
-    int grabRingPos = 15;
-    int almostScoreRingPos = 90;
-    int scoreRingPos = 120;
-    int returnHomePos = 10; // falls back to zero as motor braking is turned off- zero is recalibrated as well - bot bouncing may hurt this dunno it funny
-    if(DunkPos == 1 && ArmSensor.get_position() >= 100 * grabRingPos){
-      Arm.move_velocity(0);
-      DunkPos = 2;
-      Arm.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD); 
-      Arm.move_velocity(0);
-    }
-    else if(DunkPos == 3 && ArmSensor.get_position() >= 100 * almostScoreRingPos){
-      Arm.move_velocity(0);
-      DunkPos = 4;
-      Arm.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD); 
-      Arm.move_velocity(0);
-    }
-    else if(DunkPos == 5 && ArmSensor.get_position() >= 100 * scoreRingPos){
-      Arm.move_velocity(0);
-      DunkPos = 6;
-      Arm.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD); 
-      Arm.move_velocity(0);
-    }
+  // Position values for the rotation sensor
+  int grabRingPos = 15;
+  int almostScoreRingPos = 90;
+  int scoreRingPos = 120;
+  int returnHomePos = 10; 
 
-//---------------------------------------------------Auton, Intake, & Arm code----------------------------------------------------------
+  // Goes from home pos to ring grabbing
+  if(DunkPos == 1 && ArmSensor.get_position() >= 100 * grabRingPos){
+    Arm.move_velocity(0);
+    DunkPos = 2;
+    Arm.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD); 
+    Arm.move_velocity(0);
+  }//Goes from ring grabbing to lining up
+  else if(DunkPos == 3 && ArmSensor.get_position() >= 100 * almostScoreRingPos){
+    Arm.move_velocity(0);
+    DunkPos = 4;
+    Arm.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD); 
+    Arm.move_velocity(0);
+  }//Goes from lining up to scored
+  else if(DunkPos == 5 && ArmSensor.get_position() >= 100 * scoreRingPos){
+    Arm.move_velocity(0);
+    DunkPos = 6;
+    Arm.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD); 
+    Arm.move_velocity(0);
+  }
+
+//------------------------------------------------------Auton and Intake code-----------------------------------------------------------
   
   // Pressing both X and Down on the controller will run the selected auton (for testing/development)
   if (master.get_digital(pros::E_CONTROLLER_DIGITAL_X) 
@@ -319,10 +290,6 @@ void opcontrol() {
     Intake.move_velocity(0);
     IntakeFlex.move_velocity(0);
   }
-  // // Pressing Y will move the macro to the scoring
-  // if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)){
-  //   armMacro = !armMacro;
-  // }
 
   pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   

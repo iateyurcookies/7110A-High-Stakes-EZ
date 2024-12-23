@@ -37,56 +37,6 @@ void default_constants() {
   chassis.slew_drive_constants_set(7_in, 80);
 }
 
-// Drive Example
-void drive_example() {
-  // The first parameter is target inches
-  // The second parameter is max speed the robot will drive at
-  // The third parameter is a boolean (true or false) for enabling/disabling a slew at the start of drive motions
-  // for slew, only enable it when the drive distance is greater than the slew distance + a few inches
-
-  chassis.pid_drive_set(24_in, DRIVE_SPEED, true);
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(-12_in, DRIVE_SPEED);
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(-12_in, DRIVE_SPEED);
-  chassis.pid_wait();
-}
-
-// Turn Example
-void turn_example() {
-  // The first parameter is the target in degrees
-  // The second parameter is max speed the robot will drive at
-
-  chassis.pid_turn_set(90_deg, TURN_SPEED);
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(45_deg, TURN_SPEED);
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(0_deg, TURN_SPEED);
-  chassis.pid_wait();
-}
-
-// Combining Turn + Drive
-void drive_and_turn() {
-  chassis.pid_drive_set(24_in, DRIVE_SPEED, true);
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(45_deg, TURN_SPEED);
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(-45_deg, TURN_SPEED);
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(0_deg, TURN_SPEED);
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(-24_in, DRIVE_SPEED, true);
-  chassis.pid_wait();
-}
-
 // Wait Until and Changing Max Speed
 void wait_until_change_speed() {
   // pid_wait_until will wait until the robot gets to a desired position
@@ -110,26 +60,6 @@ void wait_until_change_speed() {
   chassis.pid_drive_set(-24_in, 30, true);
   chassis.pid_wait_until(-6_in);
   chassis.pid_speed_max_set(DRIVE_SPEED);  // After driving 6 inches at 30 speed, the robot will go the remaining distance at DRIVE_SPEED
-  chassis.pid_wait();
-}
-
-// Swing Example
-void swing_example() {
-  // The first parameter is ez::LEFT_SWING or ez::RIGHT_SWING
-  // The second parameter is the target in degrees
-  // The third parameter is the speed of the moving side of the drive
-  // The fourth parameter is the speed of the still side of the drive, this allows for wider arcs
-
-  chassis.pid_swing_set(ez::LEFT_SWING, 45_deg, SWING_SPEED, 45);
-  chassis.pid_wait();
-
-  chassis.pid_swing_set(ez::RIGHT_SWING, 0_deg, SWING_SPEED, 45);
-  chassis.pid_wait();
-
-  chassis.pid_swing_set(ez::RIGHT_SWING, 45_deg, SWING_SPEED, 45);
-  chassis.pid_wait();
-
-  chassis.pid_swing_set(ez::LEFT_SWING, 0_deg, SWING_SPEED, 45);
   chassis.pid_wait();
 }
 
@@ -173,43 +103,8 @@ void combining_movements() {
   chassis.pid_wait();
 }
 
-// Interference example
-void tug(int attempts) {
-  for (int i = 0; i < attempts - 1; i++) {
-    // Attempt to drive backward
-    printf("i - %i", i);
-    chassis.pid_drive_set(-12_in, 127);
-    chassis.pid_wait();
-
-    // If failsafed...
-    if (chassis.interfered) {
-      chassis.drive_sensor_reset();
-      chassis.pid_drive_set(-2_in, 20);
-      pros::delay(1000);
-    }
-    // If the robot successfully drove back, return
-    else {
-      return;
-    }
-  }
-}
-
-// If there is no interference, the robot will drive forward and turn 90 degrees.
-// If interfered, the robot will drive forward and then attempt to drive backward.
-void interfered_example() {
-  chassis.pid_drive_set(24_in, DRIVE_SPEED, true);
-  chassis.pid_wait();
-
-  if (chassis.interfered) {
-    tug(3);
-    return;
-  }
-
-  chassis.pid_turn_set(90_deg, TURN_SPEED);
-  chassis.pid_wait();
-}
-
 void sixRingBlue(){
+  // Releases intake
   IntakeFlex.move_relative(180, 600);
   
   //move back to mogo and clamp
@@ -263,6 +158,7 @@ void sixRingBlue(){
 }
 
 void sixRingRed(){
+  // Releases intake
   IntakeFlex.move_relative(180, 600);
   
   //move back to mogo and clamp
@@ -315,6 +211,7 @@ void sixRingRed(){
 }
 
 void BlueLeftRush(){
+  // Releases intake
   IntakeFlex.move_relative(180, 600);
 
   //move back
@@ -360,6 +257,7 @@ void BlueLeftRush(){
 }
 
 void RedRightRush(){
+  // Releases intake
   IntakeFlex.move_relative(180, 600);
 
   //move back
@@ -404,6 +302,7 @@ void RedRightRush(){
 }
 
 void BlueRightAWP(){
+  // Releases intake
   IntakeFlex.move_relative(180, 600);
   Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);
   
@@ -467,6 +366,7 @@ void BlueRightAWP(){
 }
 
 void RedLeftAWP(){
+  // Releases intake
   IntakeFlex.move_relative(180, 600);
   Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);
   
@@ -530,7 +430,9 @@ void RedLeftAWP(){
 }
 
 void prog(){
-  // IntakeFlex.move_relative(180, 600);
+  // Releases intake
+  IntakeFlex.move_relative(180, 600);
+  //Sets arm brake mode to hold for consistency
   Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);
 
   //score alliance

@@ -28,6 +28,3 @@ inline::pros::Optical optical(20);
 // Rotation sensors for arm and intake
 inline::pros::Rotation ArmSensor(19);
 inline::pros::Rotation IntakeSensor(99);
-
-// inline inline::pros::Motor intake(1);
-// inline pros::adi::DigitalIn limit_switch('A');
