@@ -510,13 +510,13 @@ void RedLeftAWP(){
   //touch ladder
   chassis.pid_drive_set(-16_in, 65, true);
   chassis.pid_wait();
-  Arm.move_velocity(200);
-  chassis.pid_turn_set(-54, 75);
-  chassis.pid_wait();
-  chassis.pid_drive_set(2_in, 65, false);
-  chassis.pid_wait();
-  Arm.move_velocity(0);
-  Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_COAST);
+  // Arm.move_velocity(200);
+  // chassis.pid_turn_set(-54, 75);
+  // chassis.pid_wait();
+  // chassis.pid_drive_set(2_in, 65, false);
+  // chassis.pid_wait();
+  // Arm.move_velocity(0);
+  // Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_COAST);
 }
 
 void prog(){
