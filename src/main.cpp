@@ -29,7 +29,7 @@ static bool team{true};         //---------------> true = red    false = blue
 
 static int DunkPos = 0;         //---------------> arm macro integer
 static bool isMoving = false;   //---------------> is arm active
-static int grabRingPos = 16;    //---------------> position values for the macro
+static float grabRingPos = 14.5;    //---------------> position values for the macro
 static int almostScoreRingPos = 90;
 static int scoreRingPos = 140;
 static int returnHomePos = 6;
