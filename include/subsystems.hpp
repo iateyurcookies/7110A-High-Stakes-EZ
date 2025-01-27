@@ -2,6 +2,7 @@
 
 #include "api.h"
 #include "pros/rotation.hpp"
+#include "subsystems.hpp"
 
 //Drive Motors, all 600 rpm blue carts
 inline::pros::Motor FrontL(10, pros::MotorGearset::blue);
@@ -21,6 +22,9 @@ inline::pros::Motor IntakeFlex(3, pros::MotorGearset::green);
 // Clamp & Doinker Piston, Clamp : port A | Doinker : port B
 inline::pros::adi::DigitalOut clamp_piston(1);
 inline::pros::adi::DigitalOut doinker_piston(2);
+inline::pros::adi::DigitalOut intake_piston(3);
+inline::pros::adi::DigitalOut doinker_clamp(4);
+
 
 // Optical sensor on port 10
 inline::pros::Optical optical(20);
