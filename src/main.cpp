@@ -13,6 +13,7 @@
 #include "autons.hpp"
 #include "pros/apix.h"
 #include "pros/misc.h"
+#include "pros/misc.hpp"
 #include "pros/motor_group.hpp"
 #include "pros/motors.h"
 #include "pros/rtos.hpp"
@@ -32,10 +33,12 @@ static bool isMoving = false;   //---------------> is arm active
 static float grabRingPos = 14.5;    //---------------> position values for the macro
 static int almostScoreRingPos = 90;
 static int scoreRingPos = 140;
-static int returnHomePos = 6;
+static int returnHomePos = 7;
 
 // Load image from sd
-rd::Image logo("/usd/robotics/logo.bin", "Logo");
+rd::Image logo("/usd/robotics/logo.bin", "Logo 1");
+rd::Image Social15("/usd/robotics/+15.bin", "+15");
+rd::Image Social_300("/usd/robotics/-30000.bin", "-30000");
 rd::Image dhyan("/usd/robotics/dhyan.bin", "Dhyan");
 
 //Initialize console
@@ -43,10 +46,12 @@ rd::Console console;
 
 //Initialize auton selector
 rd::Selector selector({
-    {"Blue4-", sixRingBlue},
-    {"Red4-", sixRingRed},
     {"BRush+", BlueLeftRush},
     {"RRush+", RedRightRush},
+    {"QualB", QualBlueLeftRush},
+    {"QualR", QualRedRightRush},
+    {"Blue4-",sixRingBlue},
+    {"Red4-", sixRingRed},
     {"BSWP-", BlueRightAWP},
     {"RSWP-", RedLeftAWP},
     {"Prog", prog},
@@ -68,6 +73,7 @@ void initialize() {
   DunkPos = 0; //------------------------------------------> Arm stuff
   ArmSensor.reset();
   ArmSensor.set_position(0);
+  doinker_clamp.set_value(true); 
   intake_piston.set_value(false); //-----------------------> Sets intake piston to false so it starts down
 
   // Configure your chassis controls
@@ -85,11 +91,12 @@ void initialize() {
 }
 
 void disabled() {
-  // . . .
+  doinker_clamp.set_value(true);
+  Social_300.focus();
 }
 
 void competition_initialize() {
-  // . . .
+  doinker_clamp.set_value(true);
 }
 
 
@@ -103,7 +110,7 @@ void autonomous() {
   ArmSensor.set_position(0);
 
   selector.run_auton();
-  console.focus();
+  Social15.focus();
 
   pros::Task console_display([&]() { //-------------------------> printing important shit to the brain
     while (true) {
@@ -118,8 +125,9 @@ void autonomous() {
       console.printf("R3 %.0fC \n\n", BackR.get_temperature());
       //intake & arm
       console.printf("INTAKE %.0fC \n", Intake.get_temperature());
-      console.printf("ARM %.0fC", Arm.get_temperature());
-      pros::delay(2000);
+      console.printf("ARM %.0fC \n", Arm.get_temperature());
+      console.printf("HEADING %.0f", iMu.get_heading());
+      pros::delay(800);
       console.clear(); //------------------------------------------------------> Refreshes screen after delay to save resources
     }
   });
@@ -130,10 +138,8 @@ void opcontrol() {
   logo.focus();
 
   // Makes it so the SWP autons don't mess up macro
-  if (selector.get_auton()->name == "BSWP-" 
-  ||  selector.get_auton()->name == "RSWP-"){
-    DunkPos = 5;
-    Arm.move_velocity(-200);
+  if (ArmSensor.get_position() >= 800){
+    DunkPos = 4;
   }
 
   // This is preference to what you like to drive on
@@ -207,7 +213,8 @@ void opcontrol() {
     }
     
     // Pressing all R and L triggers on the controller will run the selected auton (for testing/development)
-    if (master.get_digital_new_press(DIGITAL_L1) == true && master.get_digital_new_press(DIGITAL_R1) == true) {
+    if (master.get_digital_new_press(DIGITAL_L1) == true && master.get_digital_new_press(DIGITAL_R1) == true
+    && pros::competition::is_connected() == false) {
       autonomous();
     }
 
@@ -306,6 +313,7 @@ void opcontrol() {
       Arm.move_velocity(0);
     }  //--------------------------------------> Goes from scored to home
     else if (DunkPos == 5 && ArmSensor.get_position() <= 100 * returnHomePos) {
+      Arm.set_brake_mode(MOTOR_BRAKE_COAST);
       Arm.move_velocity(0);
       DunkPos = 0;
       isMoving = false;
@@ -316,10 +324,10 @@ void opcontrol() {
 //---------------------------------------------------------Intake code------------------------------------------------------------------
 
     // Pressing L1/L2 will outake and R1/R2 will intake
-    if/*----*/(master.get_digital(DIGITAL_L1) == true || master.get_digital(DIGITAL_L2) == true) {
+    if/*----*/(/*master.get_digital(DIGITAL_L1) == true ||*/ master.get_digital(DIGITAL_L2) == true) {
       Intake.move_velocity(-600);
       IntakeFlex.move_velocity(-200);
-    } else if (master.get_digital(DIGITAL_R1) == true || master.get_digital(DIGITAL_R2) == true) {
+    } else if (/*master.get_digital(DIGITAL_R1) == true ||*/ master.get_digital(DIGITAL_R2) == true) {
       Intake.move_velocity(600);
       IntakeFlex.move_velocity(200);
     } else {

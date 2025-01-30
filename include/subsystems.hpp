@@ -1,8 +1,11 @@
 #pragma once
 
 #include "api.h"
+#include "pros/imu.hpp"
 #include "pros/rotation.hpp"
 #include "subsystems.hpp"
+
+inline::pros::IMU iMu(1);
 
 //Drive Motors, all 600 rpm blue carts
 inline::pros::Motor FrontL(10, pros::MotorGearset::blue);
