@@ -1,6 +1,7 @@
 #pragma once
 
 #include "api.h"
+#include "pros/distance.hpp"
 #include "pros/imu.hpp"
 #include "pros/rotation.hpp"
 #include "subsystems.hpp"
@@ -32,6 +33,8 @@ inline::pros::adi::DigitalOut doinker_clamp(4);
 // Optical sensor on port 10
 inline::pros::Optical optical(20);
 
+// Rotation sensor on port
+inline::pros::Distance distanceSensor(18);
+
 // Rotation sensors for arm and intake
 inline::pros::Rotation ArmSensor(19);
-inline::pros::Rotation IntakeSensor(99);

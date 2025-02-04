@@ -21,12 +21,14 @@
 #include "subsystems.hpp"
 
 // Initialize important variables
-static bool clampPiston{false}; //---------------> toggle for mogo clamp
-static bool doinkPiston{false}; //---------------> toggle for doinker
-static bool intakePiston{false};//---------------> toggle for intake piston
-static bool doinkClamp{true};   //---------------> toggle for doinker clamp
+static bool clampPiston = false; //---------------> toggle for mogo clamp
+static bool doinkPiston = false; //---------------> toggle for doinker
+static bool intakePiston = false;//---------------> toggle for intake piston
+static bool doinkClamp = true;   //---------------> toggle for doinker clamp
 
-static bool team{true};         //---------------> true = red    false = blue
+static bool team = true;         //---------------> true = red    false = blue
+static bool ringCol = false;
+static bool isSorting = false;
 
 static int DunkPos = 0;         //---------------> arm macro integer
 static bool isMoving = false;   //---------------> is arm active
@@ -34,11 +36,12 @@ static float grabRingPos = 14.5;    //---------------> position values for the m
 static int almostScoreRingPos = 90;
 static int scoreRingPos = 140;
 static int returnHomePos = 7;
+static int armTimeout = 0;
 
 // Load image from sd
 rd::Image logo("/usd/robotics/logo.bin", "Logo 1");
-rd::Image Social15("/usd/robotics/+15.bin", "+15");
-rd::Image Social_300("/usd/robotics/-30000.bin", "-30000");
+// rd::Image Social15("/usd/robotics/+15.bin", "+15");
+// rd::Image Social_300("/usd/robotics/-30000.bin", "-30000");
 rd::Image dhyan("/usd/robotics/dhyan.bin", "Dhyan");
 
 //Initialize console
@@ -61,7 +64,7 @@ rd::Selector selector({
 // Chassis constructor
 ez::Drive chassis(
     {-10, -9, -8},  // Left Chassis Ports (negative port will reverse it!)
-    {7, 6, 5},     // Right Chassis Ports (negative port will reverse it!)
+    {7, 6, 5},    // Right Chassis Ports (negative port will reverse it!)
 
     1, //-------------------------------> IMU Port
     3.25, //----------------------> Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
@@ -86,31 +89,56 @@ void initialize() {
   chassis.initialize(); //---------------------------------> Initializes chassis and auton selector
   master.rumble(".");
   pros::screen::erase();
-  pros::delay(500);
   selector.focus();
 }
 
 void disabled() {
   doinker_clamp.set_value(true);
-  Social_300.focus();
 }
 
 void competition_initialize() {
   doinker_clamp.set_value(true);
 }
 
-
-
 void autonomous() {
-  chassis.pid_targets_reset();                            // Resets PID targets to 0
-  chassis.drive_imu_reset();                              // Reset gyro position to 0
-  chassis.drive_sensor_reset();                           // Reset drive sensors to 0
-  chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold. This helps autonomous consistency
-  ArmSensor.reset();
+  chassis.pid_targets_reset();                          // Resets PID targets to 0
+  chassis.drive_imu_reset();                            // Reset gyro position to 0
+  chassis.drive_sensor_reset();                         // Reset drive sensors to 0
+  chassis.drive_brake_set(MOTOR_BRAKE_HOLD);// Set motors to hold. This helps autonomous consistency
+  ArmSensor.reset();                                    // Rotation sensor reset and set to 0 for consistency
   ArmSensor.set_position(0);
 
   selector.run_auton();
-  Social15.focus();
+  console.focus();
+
+  pros::Task colorSort([&]() { //---> Color sorting for the intake
+    while (true) {
+      optical.set_led_pwm(100); //--------------> Lights up LED for optical sensor
+
+      if ( (optical.get_hue() >= 145) && (optical.get_hue() <= 240) ) {
+        ringCol = false; //--------------------------------> Blue
+      } else if (optical.get_hue() >= 10 && optical.get_hue() <= 40) {
+        ringCol = true; //-------------------------------> Red
+      }
+
+      if/*----*/( (distanceSensor.get_distance() <= 50) && (team == true) && (ringCol == false) ) {
+        pros::delay(80);
+        isSorting = true;
+        Intake.move_velocity(100);
+        pros::delay(250);
+        isSorting = false;
+        Intake.move_velocity(600);
+      } else if ( (distanceSensor.get_distance() <= 50) && (team == false) && (ringCol == true) ) {
+        pros::delay(100);
+        isSorting = true;
+        Intake.move_velocity(80);
+        pros::delay(250);
+        isSorting = false;
+        Intake.move_velocity(600);
+      }
+      pros::delay(ez::util::DELAY_TIME);
+    }
+  });
 
   pros::Task console_display([&]() { //-------------------------> printing important shit to the brain
     while (true) {
@@ -127,14 +155,14 @@ void autonomous() {
       console.printf("INTAKE %.0fC \n", Intake.get_temperature());
       console.printf("ARM %.0fC \n", Arm.get_temperature());
       console.printf("HEADING %.0f", iMu.get_heading());
-      pros::delay(800);
+      pros::delay(150);
       console.clear(); //------------------------------------------------------> Refreshes screen after delay to save resources
     }
   });
 }
 
 void opcontrol() {
-  //Team branding
+
   logo.focus();
 
   // Makes it so the SWP autons don't mess up macro
@@ -151,22 +179,31 @@ void opcontrol() {
   chassis.pid_tuner_disable();
 
   pros::Task colorSort([&]() { //---> Color sorting for the intake
-    if (team == true) { //---------------------------> If Red, spit out blue
-      optical.set_led_pwm(100);  //-----------> Lights up LED
-      if ((optical.get_hue() >= 200) && (optical.get_hue() <= 240)) {
-        if (IntakeSensor.get_angle() == 1000) { //---> After Intake spins near the top,
-          Intake.move_velocity(0); //------> pause intake to let the ring fly over
-          pros::delay(330);
-        }
+    while (true) {
+      optical.set_led_pwm(100); //--------------> Lights up LED for optical sensor
+
+      if ( (optical.get_hue() >= 145) && (optical.get_hue() <= 240) ) {
+        ringCol = false; //--------------------------------> Blue
+      } else if (optical.get_hue() >= 10 && optical.get_hue() <= 40) {
+        ringCol = true; //-------------------------------> Red
       }
-    } else if (team == false) { //-------------------> If Blue, spit out red
-      optical.set_led_pwm(100); //------------> Lights up LED
-      if (optical.get_hue() >= 345 && optical.get_hue() <= 20) {
-        if (IntakeSensor.get_angle() == 1000) { //---> After Intake spins near the top,
-          Intake.move_velocity(0); //------> pause intake to let the ring fly over
-          pros::delay(330);
-        }
+
+      if/*----*/( (distanceSensor.get_distance() <= 50) && (team == true) && (ringCol == false) ) {
+        pros::delay(80);
+        isSorting = true;
+        Intake.move_velocity(100);
+        pros::delay(250);
+        isSorting = false;
+        Intake.move_velocity(600);
+      } else if ( (distanceSensor.get_distance() <= 50) && (team == false) && (ringCol == true) ) {
+        pros::delay(100);
+        isSorting = true;
+        Intake.move_velocity(80);
+        pros::delay(250);
+        isSorting = false;
+        Intake.move_velocity(600);
       }
+      pros::delay(ez::util::DELAY_TIME);
     }
   });
 
@@ -175,6 +212,7 @@ void opcontrol() {
       // Initializes the strings for the info
       std::string teamStr = ""; 
       std::string autoStr = "";
+      std::string ringStr = "";
 
       // Gets the auton name
       if(selector.get_auton().has_value() == false){
@@ -189,8 +227,14 @@ void opcontrol() {
       else
         teamStr = "B";
 
+      if (ringCol)
+        ringStr = "Red";
+      else
+        ringStr = "Blue";
+
+
       // Combines all the strings and prints it as one to the controller screen
-      std::string controllerString = "T: " + teamStr + " " + autoStr + "      ";
+      std::string controllerString = teamStr + " Ring: " + ringStr + " " + std::to_string(distanceSensor.get_distance());
       master.print(0, 1, "%s", controllerString);
 
       // delay so the brain doesn't get fried
@@ -206,22 +250,21 @@ void opcontrol() {
     chassis.opcontrol_arcade_standard(ez::SPLIT);
 
     // Left button cycles back though the autons and right button cycles forward
-    if (master.get_digital_new_press(DIGITAL_UP)) {
-    selector.prev_auton(true); 
-    } if (master.get_digital_new_press(DIGITAL_LEFT)) {
-    selector.next_auton(true); 
+    if (master.get_digital_new_press(DIGITAL_LEFT)) {
+      selector.prev_auton(true); 
+    } if (master.get_digital_new_press(DIGITAL_UP)) {
+      selector.next_auton(true); 
     }
     
     // Pressing all R and L triggers on the controller will run the selected auton (for testing/development)
-    if (master.get_digital_new_press(DIGITAL_L1) == true && master.get_digital_new_press(DIGITAL_R1) == true
-    && pros::competition::is_connected() == false) {
-      autonomous();
-    }
-
-    // Pressing the Up and Left buttons will change the bots color sorting to the opposite color for color-sorting
-    if (master.get_digital_new_press(DIGITAL_UP) && master.get_digital_new_press(DIGITAL_LEFT)) {
+    if (master.get_digital_new_press(DIGITAL_A)) {
       team = !team;
     }
+
+    // // Pressing the Up and Left buttons will change the bots color sorting to the opposite color for color-sorting
+    // if (master.get_digital_new_press(DIGITAL_UP) && master.get_digital_new_press(DIGITAL_LEFT)) {
+    //   team = !team;
+    // }
 
 //--------------------------------------------------------------Pistons-----------------------------------------------------------------
 
@@ -258,21 +301,22 @@ void opcontrol() {
       }
     }
 
-    // Pressing A will acuate the piston intake (is toggle)
-    if (master.get_digital_new_press(DIGITAL_A)) {
-      if (!intakePiston) {
-        intake_piston.set_value(true);
-        intakePiston = !intakePiston;
-      } else {
-        intake_piston.set_value(false);
-        intakePiston = !intakePiston;
-      }
-    }
+    // // Pressing A will acuate the piston intake (is toggle)
+    // if (master.get_digital_new_press(DIGITAL_A)) {
+    //   if (!intakePiston) {
+    //     intake_piston.set_value(true);
+    //     intakePiston = !intakePiston;
+    //   } else {
+    //     intake_piston.set_value(false);
+    //     intakePiston = !intakePiston;
+    //   }
+    // }
     
 //-------------------------------------Lady Brown macro code (make sure it starts at the hardstop)--------------------------------------
 
     if(master.get_digital_new_press(DIGITAL_RIGHT))
     { //--------------------------------------> Returns to home regardless of position
+      Arm.move_velocity(0);
       DunkPos = 5;
       Arm.move_velocity(-200);
     }
@@ -282,15 +326,18 @@ void opcontrol() {
      && isMoving == false) {
       if (DunkPos == 0) { //------------------> If it's at pos 0, go to pos 1 (ring grabbing)
         ArmSensor.reset_position();
+        Arm.move_velocity(0);
         isMoving = true;
         Arm.move_velocity(200);
         DunkPos = 1;
       } else if (DunkPos == 2) { //-----------> Goes from ring grabbing (pos 1) to scoring (pos 3)
+        Arm.move_velocity(0);
         isMoving = true;
         Arm.move_velocity(200);
         DunkPos = 3;
       } 
       else if (DunkPos == 4) { //-----------> Goes from scoring (pos 3) to home (pos 0)
+        Arm.move_velocity(0);
         isMoving = true;
         Arm.move_velocity(-200);
         DunkPos = 5;
@@ -324,10 +371,13 @@ void opcontrol() {
 //---------------------------------------------------------Intake code------------------------------------------------------------------
 
     // Pressing L1/L2 will outake and R1/R2 will intake
-    if/*----*/(/*master.get_digital(DIGITAL_L1) == true ||*/ master.get_digital(DIGITAL_L2) == true) {
+    if/*----*/((master.get_digital(DIGITAL_L1) == true 
+    || master.get_digital(DIGITAL_L2) == true)) {
       Intake.move_velocity(-600);
       IntakeFlex.move_velocity(-200);
-    } else if (/*master.get_digital(DIGITAL_R1) == true ||*/ master.get_digital(DIGITAL_R2) == true) {
+    } else if ((master.get_digital(DIGITAL_R1) == true 
+    || master.get_digital(DIGITAL_R2) == true)
+    && isSorting == false) {
       Intake.move_velocity(600);
       IntakeFlex.move_velocity(200);
     } else {

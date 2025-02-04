@@ -36,32 +36,6 @@ void default_constants() {
   chassis.slew_drive_constants_set(7_in, 80);
 }
 
-// Wait Until and Changing Max Speed
-void wait_until_change_speed() {
-  // pid_wait_until will wait until the robot gets to a desired position
-
-  // When the robot gets to 6 inches slowly, the robot will travel the remaining distance at full speed
-  chassis.pid_drive_set(24_in, 30, true);
-  chassis.pid_wait_until(6_in);
-  chassis.pid_speed_max_set(DRIVE_SPEED);  // After driving 6 inches at 30 speed, the robot will go the remaining distance at DRIVE_SPEED
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(45_deg, TURN_SPEED);
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(-45_deg, TURN_SPEED);
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(0_deg, TURN_SPEED);
-  chassis.pid_wait();
-
-  // When the robot gets to -6 inches slowly, the robot will travel the remaining distance at full speed
-  chassis.pid_drive_set(-24_in, 30, true);
-  chassis.pid_wait_until(-6_in);
-  chassis.pid_speed_max_set(DRIVE_SPEED);  // After driving 6 inches at 30 speed, the robot will go the remaining distance at DRIVE_SPEED
-  chassis.pid_wait();
-}
-
 // Motion Chaining
 void motion_chaining() {
   // Motion chaining is where motions all try to blend together instead of individual movements.
@@ -80,24 +54,6 @@ void motion_chaining() {
   chassis.pid_wait();
 
   // Your final motion should still be a normal pid_wait
-  chassis.pid_drive_set(-24_in, DRIVE_SPEED, true);
-  chassis.pid_wait();
-}
-
-// Auto that tests everything
-void combining_movements() {
-  chassis.pid_drive_set(24_in, DRIVE_SPEED, true);
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(45_deg, TURN_SPEED);
-  chassis.pid_wait();
-
-  chassis.pid_swing_set(ez::RIGHT_SWING, -45_deg, SWING_SPEED, 45);
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(0_deg, TURN_SPEED);
-  chassis.pid_wait();
-
   chassis.pid_drive_set(-24_in, DRIVE_SPEED, true);
   chassis.pid_wait();
 }
@@ -661,6 +617,7 @@ void RedLeftAWP(){
 void prog(){
   // Releases intake
   IntakeFlex.move_relative(180, 600);
+
   //Sets arm brake mode to hold for consistency
   Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);
 
@@ -855,15 +812,15 @@ void prog(){
 
   //============================================================STAGE 3=================================================================
 
-  //turn toward other side
-  chassis.pid_turn_set(0, 75);
-  chassis.pid_wait();
+  // //turn toward other side
+  // chassis.pid_turn_set(0, 75);
+  // chassis.pid_wait();
 
-  //drive to center mogo
-  chassis.pid_swing_set(ez::RIGHT_SWING,-130, 120, 90);
-  chassis.pid_wait();
-  chassis.pid_turn_set(135, 75);
-  chassis.pid_wait();
+  // //drive to center mogo
+  // chassis.pid_swing_set(ez::RIGHT_SWING,-130, 120, 90);
+  // chassis.pid_wait();
+  // chassis.pid_turn_set(135, 75);
+  // chassis.pid_wait();
 
   // //turn towards empty mogo
   // chassis.pid_turn_set(90, 75);

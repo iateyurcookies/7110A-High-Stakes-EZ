@@ -4,9 +4,7 @@
 
 extern Drive chassis;
 
-void wait_until_change_speed();
 void motion_chaining();
-void combining_movements();
 void BlueRightAWP();
 void RedLeftAWP();
 void BlueLeftRush();
