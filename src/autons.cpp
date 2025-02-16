@@ -622,7 +622,7 @@ void prog(){
   Arm.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);
 
   //score alliance
-  Intake.move_velocity(600);
+  Intake.move_velocity(400);
   pros::delay(800);
   Intake.move_velocity(0);
   //                                3 POINTS
@@ -630,85 +630,89 @@ void prog(){
   //============================================================STAGE 1=================================================================
   
   //turn to mogo
-  chassis.pid_drive_set(10, 45, true);
-  chassis.pid_wait();
+  chassis.pid_drive_set(12, 75, true);
+  chassis.pid_wait_quick();
   chassis.pid_turn_set(90, 75);
-  chassis.pid_wait();
+  chassis.pid_wait_quick();
 
   //move back and clamp mogo
-  chassis.pid_drive_set(-24_in, 45, true);
+  chassis.pid_drive_set(-24_in, 50, true);
   chassis.pid_wait_until(-22);
   clamp_piston.set_value(true);
-  chassis.pid_wait();
+  chassis.pid_wait_quick();
 
   //turn to ladder side ring
-  chassis.pid_turn_set(0, 75);
+  chassis.pid_turn_set(0, 90);
   chassis.pid_wait();
   
   //go forward and intake ring
-  Intake.move_velocity(600);
+  Intake.move_velocity(400);
   IntakeFlex.move_velocity(200);
-  chassis.pid_drive_set(24_in, 65, true);
+  chassis.pid_drive_set(24_in, 75, true);
   chassis.pid_wait_until(18_in);
   chassis.pid_speed_max_set(35);
   chassis.pid_wait();
 
   //turn towards the ring past the double lines
-  chassis.pid_turn_set(-25, 75);
+  chassis.pid_turn_set(-26, 75);
   chassis.pid_wait();
 
   //go forward and intake ring
-  chassis.pid_drive_set(52_in, 75, true);  
-  chassis.pid_wait();
-  pros::delay(200);
+  chassis.pid_drive_set(52_in, 127, true);  
+  chassis.pid_wait_quick_chain();
+  chassis.pid_drive_set(-2_in, 90, false);  
+  chassis.pid_wait_quick();
 
-  //turn towards the neutral stake ring and raise arm
-  chassis.pid_turn_set(-180, 75);
-  chassis.pid_wait();
-  chassis.pid_drive_set(3_in, 35, false);
+  //turn towards the neutral stake ring intake
+  chassis.pid_turn_set(-163, 60);
+  chassis.pid_wait_quick();
+  chassis.pid_drive_set(28_in, 75, true);
+  chassis.pid_wait_quick_chain();
+  Arm.move_relative(240, 200);
+  Intake.move_velocity(0);
+  chassis.pid_drive_set(-5_in, 75, true);
   chassis.pid_wait();
   
   //go forward and intake ring into the arm and score
-  Arm.move_relative(355, 200);
-  chassis.pid_swing_set(ez::LEFT_SWING, -90, SWING_SPEED, 20);
-  chassis.pid_wait();
-  Intake.move_velocity(600);
-  chassis.pid_drive_set(3_in, 25, false);
-  chassis.pid_wait();
-  pros::delay(575);
+  chassis.pid_turn_set(-90, 75);
+  chassis.pid_wait_quick();
+  chassis.pid_drive_set(5.5_in, 50, true);
+  chassis.pid_wait_quick();
+  Intake.move_velocity(400);
+  pros::delay(700);
   Intake.move_velocity(-100);
-  pros::delay(50);
+  pros::delay(30);
   Intake.move_velocity(0);
   Arm.move_velocity(200);
-  pros::delay(1000);
+  pros::delay(1300);
   Arm.move_velocity(0);
 
   //move back and turn towards the L pattern rings
-  chassis.pid_drive_set(-11_in, 65, true);
-  chassis.pid_wait();
+  chassis.pid_drive_set(-12.5_in, 65, true);
+  chassis.pid_wait_quick();
   chassis.pid_turn_set(-180, 75);
   chassis.pid_wait();
 
   //drive forward and intake 3 rings
-  Intake.move_velocity(600);
-  chassis.pid_drive_set(58_in, 65, true);
-  chassis.pid_wait_until(24_in);
-  chassis.pid_speed_max_set(30);
-  chassis.pid_wait();
+  Intake.move_velocity(400);
+  chassis.pid_drive_set(58_in, 95, true);
+  chassis.pid_wait_until(20_in);
+  chassis.pid_speed_max_set(45);
+  chassis.pid_wait_quick();
 
   //turn towards last corner ring
-  chassis.pid_swing_set(ez::RIGHT_SWING, -90, SWING_SPEED);
+  chassis.pid_swing_set(ez::RIGHT_SWING, -90, 90);
   chassis.pid_wait();
 
   //move forward and intake 5th ring
   chassis.pid_drive_set(12_in, 65, true);
-  chassis.pid_wait();
+  chassis.pid_wait_quick_chain();
 
   //swing into corner and unclamp mogo
-  chassis.pid_swing_set(ez::RIGHT_SWING,70, SWING_SPEED);
-  chassis.pid_wait();
+  chassis.pid_swing_set(ez::RIGHT_SWING,70, 85);
+  chassis.pid_wait_quick();
   Arm.move_velocity(-200);
-  Intake.move_velocity(-50);
+  Intake.move_velocity(-200);
   chassis.pid_drive_set(-10_in, 60, true);
   chassis.pid_wait_until(-8_in);
   Intake.move_velocity(0);
@@ -720,117 +724,152 @@ void prog(){
   //============================================================STAGE 2=================================================================
   
   //grab other mogo
-  chassis.pid_drive_set(36_in, DRIVE_SPEED, true);
+  chassis.pid_drive_set(36_in, 127, true);
   chassis.pid_wait();
   chassis.pid_turn_set(-90, 75);
   chassis.pid_wait();
   Intake.move_velocity(-600);
   IntakeFlex.move_velocity(-200);
-  chassis.pid_drive_set(-24_in, 75, true);
-  chassis.pid_wait_quick();
+  chassis.pid_drive_set(-28_in, 75, true);
+  chassis.pid_wait_quick_chain();
   chassis.pid_drive_set(-16_in, 35, false);
   chassis.pid_wait_until(-14_in);
   clamp_piston.set_value(true);
   Arm.move_velocity(0);
   chassis.pid_wait();
 
-  //start up intake and turn to ladder side ring
-  chassis.pid_turn_set(0, 75);
+  //turn to ladder side ring
+  chassis.pid_turn_set(0, 90);
   chassis.pid_wait();
   
   //go forward and intake ring
-  Intake.move_velocity(600);
+  Intake.move_velocity(400);
   IntakeFlex.move_velocity(200);
-  chassis.pid_drive_set(24_in, 65, true);
+  chassis.pid_drive_set(20_in, 85, true);
   chassis.pid_wait_until(18_in);
   chassis.pid_speed_max_set(35);
   chassis.pid_wait();
 
   //turn towards the ring past the double lines
-  chassis.pid_turn_set(25, 75);
+  chassis.pid_turn_set(26, 90);
   chassis.pid_wait();
 
   //go forward and intake ring
-  chassis.pid_drive_set(52_in, 75, true);  
-  chassis.pid_wait();
+  chassis.pid_drive_set(52_in, 85, true);  
+  chassis.pid_wait_quick();
   pros::delay(200);
 
-  //turn towards the neutral stake ring and raise arm
-  chassis.pid_turn_set(180, 75);
+  //turn towards the neutral stake ring intake
+  chassis.pid_turn_set(163, 60);
+  chassis.pid_wait_quick();
+  chassis.pid_drive_set(28_in, 75, true);
+  chassis.pid_wait_quick();
+  Intake.move_velocity(0);
+  Arm.move_relative(280, 200);
+  chassis.pid_drive_set(-5_in, 75, true);
   chassis.pid_wait();
-  chassis.pid_drive_set(2_in, 35, false);
-  chassis.pid_wait();
+  Intake.move_velocity(0);
   
   //go forward and intake ring into the arm and score
-  Arm.move_relative(355, 200);
-  chassis.pid_swing_set(ez::RIGHT_SWING, 90, SWING_SPEED, 20);
-  chassis.pid_wait();
   Intake.move_velocity(600);
-  chassis.pid_drive_set(4_in, 25, false);
-  chassis.pid_wait();
-  pros::delay(650);
+  chassis.pid_turn_set(90, 75);
+  chassis.pid_wait_quick();
+  chassis.pid_drive_set(4.5_in, 50, true);
+  chassis.pid_wait_quick();
+  pros::delay(625);
   Intake.move_velocity(-100);
-  pros::delay(50);
+  pros::delay(30);
   Intake.move_velocity(0);
   Arm.move_velocity(200);
-  pros::delay(950);
+  pros::delay(1300);
   Arm.move_velocity(0);
 
   //move back and turn towards the L pattern rings
-  chassis.pid_drive_set(-12_in, 65, true);
-  chassis.pid_wait();
-  chassis.pid_turn_set(180, 75);
+  chassis.pid_drive_set(-13_in, 65, true);
+  chassis.pid_wait_quick();
+  chassis.pid_turn_set(180, 90);
   chassis.pid_wait();
 
   //drive forward and intake 3 rings
-  Intake.move_velocity(600);
-  chassis.pid_drive_set(58_in, 65, true);
-  chassis.pid_wait_until(24_in);
-  chassis.pid_speed_max_set(30);
-  chassis.pid_wait();
+  Intake.move_velocity(400);
+  chassis.pid_drive_set(58_in, 95, true);
+  chassis.pid_wait_until(20_in);
+  chassis.pid_speed_max_set(50);
+  chassis.pid_wait_quick();
 
   //turn towards last corner ring
-  chassis.pid_swing_set(ez::LEFT_SWING, 90, SWING_SPEED);
+  chassis.pid_swing_set(ez::LEFT_SWING, 90, 90);
   chassis.pid_wait();
 
   //move forward and intake 5th ring
-  chassis.pid_drive_set(12_in, 65, true);
-  chassis.pid_wait();
+  chassis.pid_drive_set(14_in, 65, true);
+  chassis.pid_wait_quick();
 
   //swing into corner and unclamp mogo
-  chassis.pid_swing_set(ez::LEFT_SWING,-70, SWING_SPEED);
+  chassis.pid_drive_set(-6_in, 120, true);
+  chassis.pid_wait_quick();
+  chassis.pid_turn_set(-42, 65);
   chassis.pid_wait();
-  Arm.move_velocity(-200);
-  Intake.move_velocity(-50);
-  chassis.pid_drive_set(-10_in, 60, true);
-  chassis.pid_wait_until(-8_in);
+  Arm.move_velocity(0); 
+  Intake.move_velocity(-250);
   Intake.move_velocity(0);
   clamp_piston.set_value(false);
-  chassis.pid_wait();
-
+  chassis.pid_drive_set(-14_in, 120, true);
+  chassis.pid_wait_quick_chain();
+  
   //                                16 POINTS
 
   //============================================================STAGE 3=================================================================
 
-  // //turn toward other side
-  // chassis.pid_turn_set(0, 75);
-  // chassis.pid_wait();
+  // turn toward center ring
+  Intake.move_velocity(150);
+  IntakeFlex.move_velocity(200);
+  
+  //drive to center ring and intake
+  Arm.move_velocity(-200); 
+  chassis.pid_drive_set(62_in, 120, true);
+  chassis.pid_wait_quick_chain();
+  
+  Arm.move_velocity(0);
+  chassis.pid_turn_set(-45, 75);
+  chassis.pid_wait_quick_chain();
+  
+  //drive to other side and turn towards center mogo
+  chassis.pid_drive_set(52_in, 127, true);
+  chassis.pid_wait_quick();
+  chassis.pid_turn_set(-125, 90);
+  chassis.pid_wait_quick();
+  Intake.move_velocity(0);
 
-  // //drive to center mogo
-  // chassis.pid_swing_set(ez::RIGHT_SWING,-130, 120, 90);
-  // chassis.pid_wait();
-  // chassis.pid_turn_set(135, 75);
-  // chassis.pid_wait();
+  //go to mogo and clamp
+  chassis.pid_drive_set(-32_in, 90, true);
+  chassis.pid_wait_until(-14_in);
+  chassis.pid_speed_max_set(30);
+  chassis.pid_wait_until(-30_in);
+  clamp_piston.set_value(true);
+  chassis.pid_wait();
+  Intake.move_velocity(400);
 
-  // //turn towards empty mogo
-  // chassis.pid_turn_set(90, 75);
-  // chassis.pid_wait();
+  //turn towards the ring in front of the L rings
+  chassis.pid_drive_set(4_in, 127, true);
+  chassis.pid_wait_quick_chain();
+  chassis.pid_turn_set(-90, 90);
+  chassis.pid_wait_quick();
 
-  // //move to mogo and clamp
-  // chassis.pid_drive_set(16_in, 65, true);
-  // chassis.pid_wait_until(14_in);
-  // clamp_piston.set_value(true);
+  //drive and intake that ring
+  chassis.pid_swing_set(ez::LEFT_SWING, -115, 110, 75);
+  chassis.pid_wait_quick_chain();
+  chassis.pid_drive_set(-32_in, 127, false);
+  chassis.pid_wait_quick_chain();
+  Arm.move_velocity(0);
+  clamp_piston.set_value(false);
+  chassis.pid_drive_set(10_in, 127, false);
+  chassis.pid_wait();
 
+  chassis.pid_swing_set(ez::LEFT_SWING, -70, 110, 90);
+  chassis.pid_wait_quick_chain();
+  chassis.pid_drive_set(84_in, 127, false);
+  chassis.pid_wait();
 
 }
 
