@@ -9,6 +9,8 @@ void BlueRightAWP();
 void RedLeftAWP();
 void BlueLeftRush();
 void RedRightRush();
+void BlueLeftRushTug();
+void RedRightRushTug();
 void QualBlueLeftRush();
 void QualRedRightRush();
 void sixRingRed();

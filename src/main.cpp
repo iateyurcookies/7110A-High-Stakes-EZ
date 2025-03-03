@@ -23,28 +23,36 @@
 //---------------------------------------------------Initialize important variables-----------------------------------------------------
 
 // Piston variables
-static bool clampPiston = false; //---------------> toggle for mogo clamp
-static bool doinkPiston = false; //---------------> toggle for doinker
-static bool intakePiston = false;//---------------> toggle for intake piston
-static bool doinkClamp = true;   //---------------> toggle for doinker clamp
+static bool clampPiston = false;   //---------------> toggle for mogo clamp
+static bool doinkPiston = false;   //---------------> toggle for doinker
+static bool intakePiston = false;  //---------------> toggle for intake piston
+static bool doinkClamp = true;     //---------------> toggle for doinker clamp
 
 // Color sort variables
-static bool team = false;        //---------------> true = red    false = blue
+static bool team = false;          //---------------> true = red    false = blue
 static bool ringCol = false;
 static bool isSorting = false;
-static int timeToTop = 200;
-static int flickDelay = 100;
+static int blueLowerHue = 220;
+static int blueHigherHue = 230;
+static int redLowerHue = 350;
+static int redHigherHue = 10;
+static int distToSensor = 25;
+static int timeToTop = 500;
+static int flickDelay = 50;
 static bool sortOverride = false;
 
 // Arm variables
-static int DunkPos = 0;          //---------------> arm macro integer
-static bool isMoving = false;    //---------------> is arm active
+static int DunkPos = 0;            //---------------> arm macro integer
+static bool isMoving = false;      //---------------> is arm active
 static bool DONTFATFINGER = false; //---------------> helps to not fat finger at the beginning of a match
-static float grabRingPos = 8; //---------------> position values for the macro
-static int almostScoreRingPos = 90;
+static float grabRingPos = 11;      //---------------> position values for the macro
+static int returnRingGrabPos = 25;
 static int scoreRingPos = 138;
 static int returnHomePos = 5;
-static int armTimeout = 0;       //---------------> timeout for arm being stuck
+static int armTimeout = 0;         //---------------> timeout for arm being stuck
+
+// Prog timer
+static int MatchTimer = 0;
 
 
 // Load images from sd
@@ -61,6 +69,8 @@ rd::Console console;
 rd::Selector selector({
     {"BRush+", BlueLeftRush},
     {"RRush+", RedRightRush},
+    {"BRushTug", BlueLeftRushTug},
+    {"RRushTug", RedRightRushTug},
     {"QualB", QualBlueLeftRush},
     {"QualR", QualRedRightRush},
     {"Blue4-",sixRingBlue},
@@ -90,13 +100,16 @@ void initialize() {
   ArmSensor.set_position(0);
   doinker_clamp.set_value(true); 
   intake_piston.set_value(false); //-----------------------> Sets intake piston to false so it starts down
+  optical.set_integration_time(10);
+  ArmSensor.set_data_rate(5);
+
+  chassis.opcontrol_curve_default_set(2.1, 4.6);
 
   default_constants();
 
   chassis.initialize(); //---------------------------------> Initializes chassis and auton selector
   master.rumble(".");
   pros::screen::erase();
-  pros::delay(200);
   selector.focus();
 }
 
@@ -138,31 +151,28 @@ void autonomous() {
 
   pros::Task colorSort([&]() { //---> Color sorting for the intake
     while (true) {
-      if(!sortOverride){ //------------------------------> Only runs if override is off
-        optical.set_led_pwm(100); //--------------> Lights up LED for optical sensor
-
-        if ( (optical.get_hue() >= 145) && (optical.get_hue() <= 210) ) {
-          ringCol = false; //--------------------------------> Blue
-        } else if (optical.get_hue() >= 10 && optical.get_hue() <= 40) {
-          ringCol = true; //-------------------------------> Red
+      if ( (optical.get_hue() >= blueLowerHue) && (optical.get_hue() <= blueHigherHue) ) {
+          ringCol = false; //----------------------------> Blue
+        } else if (optical.get_hue() >= redLowerHue && optical.get_hue() <= redHigherHue) {
+          ringCol = true; //-----------------------------> Red
         }
+        
+      if(!sortOverride){ //------------------------------> Only runs if override is off
+        
+        optical.set_led_pwm(100); //--------------> Lights up LED for optical sensor
 
         // Basically if the distance sensor senses the ring close to it, it looks at what color it is and if it needs to sort
         // If it's the opposite color, the intake flicks it out near the top
-        if((distanceSensor.get_distance() <= 25) && (team == true) && (ringCol == false)) { // Sorts blue out
-          Intake.move_velocity(600);
-          pros::delay(timeToTop);
+        if(optical.get_proximity() <= distToSensor && team == true && ringCol == false) { // Sorts blue out
           isSorting = true; //-----------------------------> Makes it so that you can't intake while its sorting
           Social1000.focus();
-          Intake.move_velocity(100);
+          Intake.move_relative(550, 600);
           pros::delay(flickDelay);
           isSorting = false;
-          Intake.move_velocity(600);
           logo.focus();
-        } else if((distanceSensor.get_distance() <= 25) && (team == false) && (ringCol == true)) {
-          Intake.move_velocity(600);
-          pros::delay(timeToTop);
+        } else if(optical.get_proximity() <= distToSensor && team == false && ringCol == true) { // Sorts red out
           isSorting = true; //-----------------------------> Makes it so that you can't intake while its sorting
+          pros::delay(timeToTop);
           Social1000.focus();
           Intake.move_velocity(100);
           pros::delay(flickDelay);
@@ -170,6 +180,8 @@ void autonomous() {
           Intake.move_velocity(600);
           logo.focus();
         }
+      } else {
+        optical.set_led_pwm(0);
       }
       pros::delay(ez::util::DELAY_TIME);
     }
@@ -177,17 +189,22 @@ void autonomous() {
 
   pros::Task console_display([&]() { //-------------------------> printing important shit to the brain
     while (true) {
+      if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R1) 
+      && master.get_digital(pros::E_CONTROLLER_DIGITAL_X)){
+        opcontrol();
+      }
+      
       std::string ringStr = "";
       std::string autoStr = "";
 
       // Prints the ring color
       if (ringCol)
         ringStr = "Red";
-      else
+      else if(!ringCol)
         ringStr = "Blue";
 
       if(selector.get_auton().has_value() == false){
-        autoStr = "NOTHING  ";
+        autoStr = "NOTHING   ";
       }else{
         autoStr = selector.get_auton()->name;
       }
@@ -218,45 +235,46 @@ void autonomous() {
 }
 
 void opcontrol() {
-  // Branding fr
+  // Branding for style points
   logo.focus();
  
-  // This is preference to what you like to drive on
+  // Preference for driver
   pros::motor_brake_mode_e_t driver_preference_brake = MOTOR_BRAKE_COAST;
   chassis.drive_brake_set(driver_preference_brake);
   Arm.set_brake_mode(MOTOR_BRAKE_COAST);
 
-  // Enable/Disable for EZ Template built in PID tuner
+  // Enable/Disable for EZ Template PID tuner
   chassis.pid_tuner_disable();
 
-  // Makes it so the SWP autons don't mess up macro
-  if (ArmSensor.get_position() >= 800){
-    DunkPos = 4;
-    DONTFATFINGER = true;
-  }
-
-  // // Auto selects color sort
-  // if(selector.get_auton()->name == "BRush+")
-  //   team = false;
-  // else if(selector.get_auton()->name == "QualB")
-  //   team = false; 
-  // else if(selector.get_auton()->name == "Blue4-")
-  //   team = false; 
-  // else if(selector.get_auton()->name =="BSWP")
-  //   team = false;
-  // else if(selector.get_auton()->name == "RRush+")
-  //   team = true;
-  // else if(selector.get_auton()->name == "QualR")
-  //   team = true;
-  // else if(selector.get_auton()->name == "Red4-")
-  //   team = true;
-  // else if(selector.get_auton()->name == "RSWP")
-  //   team = true;
-  // else if(selector.get_auton()->name == "Prog")
-  //   team = true;
-  // else
+  // Auto selects color sort
+  if(selector.get_auton()->name == "BRush+")
+    team = false;
+  else if(selector.get_auton()->name == "QualB")
+    team = false; 
+  else if(selector.get_auton()->name == "Blue4-")
+    team = false; 
+  else if(selector.get_auton()->name =="BSWP")
+    team = false;
+  else if(selector.get_auton()->name == "RRush+")
+    team = true;
+  else if(selector.get_auton()->name == "QualR")
+    team = true;
+  else if(selector.get_auton()->name == "Red4-")
+    team = true;
+  else if(selector.get_auton()->name == "RSWP")
+    team = true;
+  else if(selector.get_auton()->name == "Prog")
+    team = true;
+  else
     sortOverride = true;
-
+  
+  pros::Task matchTimer([&]() {
+    while(pros::competition::is_competition_switch()){
+      pros::delay(1000);
+      MatchTimer++;
+    }
+  });
+  
   // Adds a timeout for the arm so it doesn't get stuck
   pros::Task armTime([&]() {
     while (true) {
@@ -264,45 +282,37 @@ void opcontrol() {
         armTimeout++;
         pros::delay(500);
       }
-      
-      if (DunkPos == 5 && armTimeout >= 3) {
-      Intake.move_velocity(-600);
-      pros::delay(250);
-      Intake.move_velocity(0);
-      Arm.move_velocity(0);
-      logo.focus();
-      DunkPos = 2;
-    }
+      // Makes it so the SWP autons don't mess up macro
+      if (ArmSensor.get_position() >= grabRingPos * 100 && MatchTimer < 3){
+        Arm.move_velocity(-200);
+      }
       pros::delay(ez::util::DELAY_TIME);
     }
 });
 
   pros::Task colorSort([&]() { //---> Color sorting for the intake
     while (true) {
-      if(!sortOverride){ //------------------------------> Only runs if override is off
-        optical.set_led_pwm(100); //--------------> Lights up LED for optical sensor
-
-        if ( (optical.get_hue() >= 145) && (optical.get_hue() <= 210) ) {
-          ringCol = false; //--------------------------------> Blue
-        } else if (optical.get_hue() >= 10 && optical.get_hue() <= 40) {
-          ringCol = true; //-------------------------------> Red
+      if ( (optical.get_hue() >= blueLowerHue) && (optical.get_hue() <= blueHigherHue) ) {
+          ringCol = false; //----------------------------> Blue
+        } else if (optical.get_hue() >= redLowerHue && optical.get_hue() <= redHigherHue) {
+          ringCol = true; //-----------------------------> Red
         }
+        
+      if(!sortOverride){ //------------------------------> Only runs if override is off
+        
+        optical.set_led_pwm(100); //--------------> Lights up LED for optical sensor
 
         // Basically if the distance sensor senses the ring close to it, it looks at what color it is and if it needs to sort
         // If it's the opposite color, the intake flicks it out near the top
-        if((distanceSensor.get_distance() <= 25) && (team == true) && (ringCol == false)) { // Sorts blue out
+        if(distanceSensor.get_distance() <= distToSensor && team == true && ringCol == false) { // Sorts blue out
           isSorting = true; //-----------------------------> Makes it so that you can't intake while its sorting
-          Intake.move_velocity(600);
-          pros::delay(timeToTop);
           Social1000.focus();
-          Intake.move_velocity(100);
+          Intake.move_relative(550, 600);
           pros::delay(flickDelay);
           isSorting = false;
-          Intake.move_velocity(600);
           logo.focus();
-        } else if((distanceSensor.get_distance() <= 25) && (team == false) && (ringCol == true)) { // Sorts red out
+        } else if(distanceSensor.get_distance() <= distToSensor && team == false && ringCol == true) { // Sorts red out
           isSorting = true; //-----------------------------> Makes it so that you can't intake while its sorting
-          Intake.move_velocity(600);
           pros::delay(timeToTop);
           Social1000.focus();
           Intake.move_velocity(100);
@@ -311,6 +321,8 @@ void opcontrol() {
           Intake.move_velocity(600);
           logo.focus();
         }
+      } else {
+        optical.set_led_pwm(0);
       }
       pros::delay(ez::util::DELAY_TIME);
     }
@@ -358,24 +370,36 @@ void opcontrol() {
     } if (master.get_digital_new_press(DIGITAL_UP)) {
       selector.next_auton(true); 
     }
-    
-    // // Pressing X changes the team for colorsort
-    // if (master.get_digital_new_press(DIGITAL_X)) {
-    //   team = !team;
-    // }
 
     // Pressing both X and Up at the same time will disable color sort
     if (master.get_digital(DIGITAL_X) && master.get_digital_new_press(DIGITAL_R1)) {
       sortOverride = !sortOverride;
     }
 
-    // Runs selected auton when pressing L1 and not connected to a field
-    if (master.get_digital_new_press(DIGITAL_X) 
-    && pros::competition::is_connected() == false) {
+    // // Pressing X changes the team for colorsort
+    // if (master.get_digital_new_press(DIGITAL_X)) {
+    //   team = !team;
+    // }
+
+    // Runs selected auton when pressing X and not connected to a field
+    if (master.get_digital_new_press(DIGITAL_X)) {
       autonomous();
     }
 
 //--------------------------------------------------------------Pistons-----------------------------------------------------------------
+    
+    // Potential auto clamp
+    // if(clampSensor.get_distance() <= 25){
+    //   clamp_piston.set_value(true);
+    // } else if(master.get_digital_new_press(DIGITAL_B)) {
+    //   if (!clampPiston) {
+    //     clamp_piston.set_value(true);
+    //     clampPiston = !clampPiston;
+    //   } else {
+    //     clamp_piston.set_value(false);
+    //     clampPiston = !clampPiston;
+    //   }
+    // }
 
     // Pressing B will acuate the mobile goal clamp (is toggle)
     if (master.get_digital_new_press(DIGITAL_B)) {
@@ -412,41 +436,52 @@ void opcontrol() {
     
 //-------------------------------------Lady Brown macro code (make sure it starts at the hardstop)--------------------------------------
 
-    if(master.get_digital_new_press(DIGITAL_RIGHT))
-    { //--------------------------------------> Returns to home regardless of position
-      armTimeout = 0;
-      DunkPos = 5;
-      Arm.move_velocity(0);
+    if(MatchTimer > 58){
       Arm.move_velocity(-200);
-      isMoving = true;
     }
 
-    if (master.get_digital_new_press(DIGITAL_DOWN) 
-     && master.get_digital(DIGITAL_RIGHT) == false
-     && isMoving == false
-     && DONTFATFINGER == false) {
+    if(master.get_digital_new_press(DIGITAL_DOWN))
+    { //--------------------------------------> Toggles between home and ring grabbing
       
       armTimeout = 0; //----------------------> Resets timeout so arm doesn't break
-
-      if (DunkPos == 0) { //------------------> If it's at pos 0, go to pos 1 (ring grabbing)
+      isMoving = true;
+      
+      if(DunkPos == 0) { //-------------------> Goes from down pos (pos 0) to ring grabbing (pos 1)
         ArmSensor.reset_position();
         Arm.move_velocity(0);
         Arm.move_velocity(200);
-        isMoving = true;
         DunkPos = 1;
-      } else if (DunkPos == 2) { //-----------> Goes from ring grabbing (pos 1) to scoring (pos 3)
-        Social15.focus();
-        Arm.move_velocity(0);
-        Arm.move_velocity(200);
-        isMoving = true;
-        DunkPos = 3;
-      } 
-      else if (DunkPos == 4) { //-----------> Goes from scoring (pos 3) to home (pos 0)
+      } else { //-----------------------------> If it's not in the down pos (pos 0), then just go back to down pos
         Arm.move_velocity(0);
         Arm.move_velocity(-200);
-        isMoving = true;
         DunkPos = 5;
+      }
+    }
+
+    if (master.get_digital_new_press(DIGITAL_RIGHT) 
+     && master.get_digital(DIGITAL_DOWN) == false
+     && isMoving == false) {
+      
+      armTimeout = 0; //----------------------> Resets timeout so arm doesn't break
+      isMoving = true;
+
+      if (DunkPos == 2) { //------------------> Goes from ring grabbing (pos 1) to scoring (pos 3)
+        Social15.focus();
+        Intake.move_velocity(-50);
+        Arm.move_velocity(0);
+        Arm.move_velocity(200);
+        DunkPos = 3;
       } 
+      else if (DunkPos == 4) { //-------------> Goes from scoring (pos 3) to ring grab(pos 7)
+        Arm.move_velocity(0);
+        Arm.move_velocity(-200);
+        DunkPos = 7;
+      }
+      else if (DunkPos == 0) { //-------------------------------> If it's not in the scoring (pos 3) or ring grab pos (pos 1), then go to scoring
+        Arm.move_velocity(0);
+        Arm.move_velocity(200);
+        DunkPos = 3;
+      }
     }
 
     //----------------------------------------> Goes from home pos to ring grabbing
@@ -456,36 +491,61 @@ void opcontrol() {
       isMoving = false;
       armTimeout = 0;
       DunkPos = 2;
-    }  //--------------------------------------> Goes from lining up to scored
+    } //--------------------------------------> Goes from ring grabbing to scored
     else if (DunkPos == 3 && (ArmSensor.get_position() >= 100 * scoreRingPos)) {
+      Arm.set_brake_mode(MOTOR_BRAKE_HOLD);
+      Arm.move_velocity(0);
+      Intake.move_velocity(-50);
+      isMoving = false;
+      armTimeout = 0;
+      DunkPos = 4;
+    } //---------------------------------------> Goes from scored to ring grabbing
+    else if (DunkPos == 7 && (ArmSensor.get_position() <= 100 * returnRingGrabPos)) {
       Arm.set_brake_mode(MOTOR_BRAKE_HOLD);
       Arm.move_velocity(0);
       isMoving = false;
       armTimeout = 0;
-      DunkPos = 4;
-    }  //--------------------------------------> Goes from scored to home
+      DunkPos = 2;
+    } //--------------------------------------> Goes from scored to home
     else if ((DunkPos == 5 && (ArmSensor.get_position() <= 100 * returnHomePos))) {
       logo.focus();
       Arm.set_brake_mode(MOTOR_BRAKE_COAST);
       Arm.move_velocity(0);
       isMoving = false;
-      DONTFATFINGER = false;
       armTimeout = 0;
       DunkPos = 0;
-      Arm.set_brake_mode(MOTOR_BRAKE_HOLD);
+    }
+
+    // All the timeout conditions so that the arm doesn't get stuck
+    if/*---*/((ArmSensor.get_position() >= (grabRingPos * 100 - 800)) && armTimeout >= 4){
+      Arm.move_velocity(0);
+      isMoving = false;
+      armTimeout = 0;
+      DunkPos = 2;
+    } else if((ArmSensor.get_position() >= (grabRingPos * 100 + 250)) && armTimeout >= 4){
+      Arm.move_velocity(0);
+      isMoving = false;
+      armTimeout = 0;
+      DunkPos = 2;
+    } else if((ArmSensor.get_position() >= (scoreRingPos * 100)) && armTimeout >= 4){
+      Arm.move_velocity(0);
+      isMoving = false;
+      armTimeout = 0;
+      DunkPos = 4;
     }
 
 //---------------------------------------------------------Intake code------------------------------------------------------------------
 
-    // Pressing L1/L2 will outake and R1/R2 will intake
-    if/*----*/((master.get_digital(DIGITAL_L1) == true 
+    // Pressing L1/L2 will outake :: R1/R2 will intake :: L1/R1 will outake flex
+    if/*---*/((master.get_digital(DIGITAL_L1) == true 
     || master.get_digital(DIGITAL_L2) == true) ) {
       Intake.move_velocity(-600);
       IntakeFlex.move_velocity(-200);
-    } else if ((master.get_digital(DIGITAL_R1) == true 
+    } else if((master.get_digital(DIGITAL_R1) == true 
     || master.get_digital(DIGITAL_R2) == true)
-    && !isSorting) {
-      Intake.move_velocity(400);
+    && !isSorting
+    && DunkPos != 3) {
+      Intake.move_velocity(600);
       IntakeFlex.move_velocity(200);
     } else {
       Intake.move_velocity(0);
