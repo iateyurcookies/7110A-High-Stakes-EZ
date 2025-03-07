@@ -34,9 +34,8 @@ inline::pros::adi::DigitalOut doinker_clamp(4);
 // Optical sensor on port 20
 inline::pros::Optical optical(18);
 
-// Distance sensor on port 11 and port **
+// Distance sensor on port 11
 inline::pros::Distance distanceSensor(11);
-inline::pros::Distance clampSensor(99);
 
 // Rotation sensor for arm on port 19
 inline::pros::Rotation ArmSensor(19);

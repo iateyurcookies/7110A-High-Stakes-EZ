@@ -4,17 +4,12 @@
 
 #include <cmath>
 #include <cstdlib>
-#include <future>
 #include <string>
 
-#include "EZ-Template/PID.hpp"
-#include "EZ-Template/auton.hpp"
 #include "EZ-Template/util.hpp"
 #include "autons.hpp"
-#include "pros/apix.h"
 #include "pros/misc.h"
 #include "pros/misc.hpp"
-#include "pros/motor_group.hpp"
 #include "pros/motors.h"
 #include "pros/rtos.hpp"
 #include "pros/screen.hpp"
@@ -45,7 +40,7 @@ static bool sortOverride = false;
 static int DunkPos = 0;            //---------------> arm macro integer
 static bool isMoving = false;      //---------------> is arm active
 static bool DONTFATFINGER = false; //---------------> helps to not fat finger at the beginning of a match
-static float grabRingPos = 11;      //---------------> position values for the macro
+static float grabRingPos = 11;     //---------------> position values for the macro
 static int returnRingGrabPos = 25;
 static int scoreRingPos = 138;
 static int returnHomePos = 5;
@@ -83,23 +78,23 @@ rd::Selector selector({
 
 // Chassis constructor
 ez::Drive chassis(
-    {-10, -9, -8},  // Left Chassis Ports (negative port will reverse it!)
-    {7, 6, 5},    // Right Chassis Ports (negative port will reverse it!)
+    {-10, -9, -8},   // Left Chassis Ports (negative port will reverse it!)
+    {7, 6, 5},      // Right Chassis Ports (negative port will reverse it!)
 
-    1, //-------------------------------> IMU Port
-    3.25, //----------------------> Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
-    450 //---------------------------------> Wheel RPM
+    1,          //------------------------> IMU Port
+    3.25, //------------------------> Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
+    450            //------------------------> Wheel RPM
 );
 
 void initialize() {
   pros::screen::erase();
-  pros::delay(500); //-----------------------> Stop the user from doing anything while legacy ports configure
-  DunkPos = 0; //------------------------------------------> Arm stuff
+  pros::delay(500); //----------------> Stop the user from doing anything while legacy ports configure
+  DunkPos = 0;                    //----------------> Arm stuff
   armTimeout = 0;
   ArmSensor.reset();
   ArmSensor.set_position(0);
   doinker_clamp.set_value(true); 
-  intake_piston.set_value(false); //-----------------------> Sets intake piston to false so it starts down
+  intake_piston.set_value(false); //----------------> Sets intake piston to false so it starts down
   optical.set_integration_time(10);
   ArmSensor.set_data_rate(5);
 
@@ -107,7 +102,7 @@ void initialize() {
 
   default_constants();
 
-  chassis.initialize(); //---------------------------------> Initializes chassis and auton selector
+  chassis.initialize();           //----------------> Initializes chassis and auton selector
   master.rumble(".");
   pros::screen::erase();
   selector.focus();
@@ -128,66 +123,8 @@ void autonomous() {
   chassis.drive_brake_set(MOTOR_BRAKE_HOLD);// Set motors to hold. This helps autonomous consistency
   ArmSensor.reset();                                    // Rotation sensor reset and set to 0 for consistency
   ArmSensor.set_position(0);
-  if(selector.get_auton()->name == "BRush+")
-    team = false;
-  else if(selector.get_auton()->name == "QualB")
-    team = false; 
-  else if(selector.get_auton()->name == "Blue4-")
-    team = false; 
-  else if(selector.get_auton()->name =="BSWP")
-    team = false;
-  else if(selector.get_auton()->name == "RRush+")
-    team = true;
-  else if(selector.get_auton()->name == "QualR")
-    team = true;
-  else if(selector.get_auton()->name == "Red4-")
-    team = true;
-  else if(selector.get_auton()->name == "RSWP")
-    team = true;
-  else if(selector.get_auton()->name == "Prog")
-    team = true;
-  else
-    sortOverride = true;
 
-  pros::Task colorSort([&]() { //---> Color sorting for the intake
-    while (true) {
-      if ( (optical.get_hue() >= blueLowerHue) && (optical.get_hue() <= blueHigherHue) ) {
-          ringCol = false; //----------------------------> Blue
-        } else if (optical.get_hue() >= redLowerHue && optical.get_hue() <= redHigherHue) {
-          ringCol = true; //-----------------------------> Red
-        }
-        
-      if(!sortOverride){ //------------------------------> Only runs if override is off
-        
-        optical.set_led_pwm(100); //--------------> Lights up LED for optical sensor
-
-        // Basically if the distance sensor senses the ring close to it, it looks at what color it is and if it needs to sort
-        // If it's the opposite color, the intake flicks it out near the top
-        if(optical.get_proximity() <= distToSensor && team == true && ringCol == false) { // Sorts blue out
-          isSorting = true; //-----------------------------> Makes it so that you can't intake while its sorting
-          Social1000.focus();
-          Intake.move_relative(550, 600);
-          pros::delay(flickDelay);
-          isSorting = false;
-          logo.focus();
-        } else if(optical.get_proximity() <= distToSensor && team == false && ringCol == true) { // Sorts red out
-          isSorting = true; //-----------------------------> Makes it so that you can't intake while its sorting
-          pros::delay(timeToTop);
-          Social1000.focus();
-          Intake.move_velocity(100);
-          pros::delay(flickDelay);
-          isSorting = false;
-          Intake.move_velocity(600);
-          logo.focus();
-        }
-      } else {
-        optical.set_led_pwm(0);
-      }
-      pros::delay(ez::util::DELAY_TIME);
-    }
-  });
-
-  pros::Task console_display([&]() { //-------------------------> printing important shit to the brain
+  pros::Task console_display([&]() {   //-------------------------> printing important stuff to the brain
     while (true) {
       if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R1) 
       && master.get_digital(pros::E_CONTROLLER_DIGITAL_X)){
@@ -211,7 +148,7 @@ void autonomous() {
 
       console.printf("BATTERY: %.0f % \n\n", pros::battery::get_capacity());
       // Drive temps
-      console.println("MOTOR_TEMPS:"); //-----------------------------------> Prints the motor temperatures for each motor
+      console.println("MOTOR_TEMPS:");             //-------------------------> Prints the motor temperatures for each motor
       console.printf("[L1 %.0fC  ", FrontL.get_temperature()); 
       console.printf("R1 %.0fC] ", FrontR.get_temperature());
       console.printf("\t\tAUTON [%s] \n", autoStr);
@@ -226,7 +163,7 @@ void autonomous() {
       console.printf("[ARM %.0fC] \n", Arm.get_temperature());
       console.printf("[ArmDeg %i]", ArmSensor.get_position());
       pros::delay(150);
-      console.clear(); //------------------------------------------------------> Refreshes screen after delay to save resources
+      console.clear();                                  //-----------------------> Refreshes screen after delay to save resources
     }
   });
 
@@ -239,12 +176,8 @@ void opcontrol() {
   logo.focus();
  
   // Preference for driver
-  pros::motor_brake_mode_e_t driver_preference_brake = MOTOR_BRAKE_COAST;
-  chassis.drive_brake_set(driver_preference_brake);
+  chassis.drive_brake_set(MOTOR_BRAKE_COAST);
   Arm.set_brake_mode(MOTOR_BRAKE_COAST);
-
-  // Enable/Disable for EZ Template PID tuner
-  chassis.pid_tuner_disable();
 
   // Auto selects color sort
   if(selector.get_auton()->name == "BRush+")
@@ -328,7 +261,7 @@ void opcontrol() {
     }
   });
 
-  pros::Task controller_screen([&]() {  //-------> Prints important shit to the controller screen
+  pros::Task controller_screen([&]() {  //-------> Prints important stuff to the controller screen
     while (true) { 
       // Initializes the strings for the info
       std::string teamStr = ""; 
@@ -435,7 +368,6 @@ void opcontrol() {
     }
     
 //-------------------------------------Lady Brown macro code (make sure it starts at the hardstop)--------------------------------------
-
     if(MatchTimer > 58){
       Arm.move_velocity(-200);
     }
@@ -443,7 +375,7 @@ void opcontrol() {
     if(master.get_digital_new_press(DIGITAL_DOWN))
     { //--------------------------------------> Toggles between home and ring grabbing
       
-      armTimeout = 0; //----------------------> Resets timeout so arm doesn't break
+      armTimeout = 0;    //-------------------> Resets timeout so arm doesn't break
       isMoving = true;
       
       if(DunkPos == 0) { //-------------------> Goes from down pos (pos 0) to ring grabbing (pos 1)
@@ -477,7 +409,7 @@ void opcontrol() {
         Arm.move_velocity(-200);
         DunkPos = 7;
       }
-      else if (DunkPos == 0) { //-------------------------------> If it's not in the scoring (pos 3) or ring grab pos (pos 1), then go to scoring
+      else if (DunkPos == 0) { //-------------> If it's not in the scoring (pos 3) or ring grab pos (pos 1), then go to scoring
         Arm.move_velocity(0);
         Arm.move_velocity(200);
         DunkPos = 3;
@@ -536,7 +468,7 @@ void opcontrol() {
 
 //---------------------------------------------------------Intake code------------------------------------------------------------------
 
-    // Pressing L1/L2 will outake :: R1/R2 will intake :: L1/R1 will outake flex
+    // Pressing L1/L2 will outake :: R1/R2 will intake
     if/*---*/((master.get_digital(DIGITAL_L1) == true 
     || master.get_digital(DIGITAL_L2) == true) ) {
       Intake.move_velocity(-600);

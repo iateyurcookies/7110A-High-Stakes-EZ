@@ -1,13 +1,7 @@
 #include "autons.hpp"
 #include <sys/_intsup.h>
-#include <algorithm>
-#include <string>
-#include "EZ-Template/slew.hpp"
 #include "EZ-Template/util.hpp"
-#include "liblvgl/hal/lv_hal_indev.h"
-#include "main.h"
 #include "okapi/api/units/QLength.hpp"
-#include "pros/device.hpp"
 #include "pros/motors.h"
 #include "pros/rtos.hpp"
 #include "subsystems.hpp"
